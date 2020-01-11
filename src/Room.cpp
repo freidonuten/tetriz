@@ -4,6 +4,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <algorithm>
 #include <ctime>
 #include "Room.h"
 #include "constants.h"

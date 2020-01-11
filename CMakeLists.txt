@@ -1,9 +1,9 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.10)
 project(untitled)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 
-add_executable(untitled
+add_executable(server
         src/main.cpp
         src/Player.cpp src/Player.h
         src/Server.cpp src/Server.h
