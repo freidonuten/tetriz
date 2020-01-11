@@ -39,17 +39,19 @@ void Server::notify(int fileDescriptor) {
     std::string msg = std::string("");
 
     // should feed msg until buffer stops overflowing
-    while (msg.length() % chunk_size == 0) {
+    while (true) {
         char buffer[chunk_size + 1]{};
         int result = read(fileDescriptor, buffer, chunk_size);
         msg += buffer;
-        if (!msg.length()){ // fixme or result == 0?
+        if (result == 0) {
             if (this->getActivePlayer()) {
                 this->getActivePlayer()->disconnect();
             } else {
                 close(this->fd);
             }
             return;
+        } else if (result != chunk_size) {
+            break; // did not fill the buffer
         }
     }
 
@@ -138,7 +140,7 @@ std::shared_ptr<Player> Server::getPlayerByFD(int fileDescriptor) {
     return playerFound == end(this->playerPool) ? nullptr : *playerFound;
 }
 
-std::shared_ptr<Room> Server::getRoomActive() {
+std::shared_ptr<Room> Server::getActiveRoom() {
     auto player = this->getPlayerByFD(this->fd);
     return player ? player->getRoom() : nullptr;
 }
@@ -154,4 +156,17 @@ std::shared_ptr<Player> Server::getPlayerByName(const std::string &name) {
             [&name](const std::shared_ptr<Player>& p){ return *p == name; });
 
     return player == this->playerPool.end() ? nullptr : *player;
+}
+
+void Server::cleanUpRooms() {
+    for(const std::shared_ptr<Room>& room: this->roomPool) {
+        if (!room->isActive()) {
+            room->foreachPlayer([room](const std::shared_ptr<Player>& player){
+                if (player){
+                    room->kick(player);
+                }
+            });
+            this->roomPool.erase(room);
+        }
+    }
 }

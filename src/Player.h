@@ -7,6 +7,7 @@
 
 #include <string>
 #include <memory>
+#include <chrono>
 #include "Room.h"
 
 class Room;
@@ -22,7 +23,7 @@ private:
 
 
     int sockfd;
-    long timestamp;
+    std::chrono::high_resolution_clock::time_point timestamp;
     std::string name;
     std::shared_ptr<Room> room;
     State state;

@@ -51,7 +51,7 @@ void Player::setRoom(std::shared_ptr<Room> r) {
 void Player::logout() {
     this->disconnect();
     if (this->room){
-        this->room->leave(shared_from_this());
+        this->room->kick(shared_from_this());
     }
 }
 
@@ -68,11 +68,12 @@ void Player::connect(int fd) {
 }
 
 void Player::refreshTimestamp() {
-    this->timestamp = millis_now();
+    this->timestamp = std::chrono::high_resolution_clock::now();
 }
 
 long Player::getInactivityMs() {
-    return millis_since(this->timestamp);
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::high_resolution_clock::now() - this->timestamp).count();
 }
 
 bool Player::isDead() {

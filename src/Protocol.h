@@ -26,12 +26,15 @@ private:
     std::string handle_room(std::string& msg);
     std::string handle_delta(std::string& msg);
     std::string handle_move(std::string& msg);
+    std::string handle_move_get(std::string &basicString);
+    std::string handle_move_last_timestamp(std::string &msg);
+    std::string handle_room_leave(std::string &msg);
 
 public:
     Protocol(Server* server);
     std::string handle(std::string& msg);
 
-    std::string handle_move_get(std::string &basicString);
+    std::string handle_room_active(std::string &msg);
 };
 
 

@@ -78,5 +78,7 @@ int main() {
         for (int i = 0; i < event_c; ++i) {
             serverInstance->notify(events[i].data.fd);
         }
+
+        serverInstance->cleanUpRooms();
     }
 }

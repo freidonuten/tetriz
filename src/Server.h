@@ -33,10 +33,11 @@ public:
     bool joinRoom(unsigned id);
     std::shared_ptr<Room> getRoomById(unsigned roomId);
     void notify(int fileDescriptor);
+    void cleanUpRooms();
 
     std::shared_ptr<Player> getPlayerByFD(int fileDescriptor);
     std::shared_ptr<Player> getPlayerByName(const std::string& name);
-    std::shared_ptr<Room> getRoomActive();
+    std::shared_ptr<Room> getActiveRoom();
     std::shared_ptr<Player> getActivePlayer();
 
     void foreachRoom(const std::function<void(const std::shared_ptr<Room> &)> &consumer);

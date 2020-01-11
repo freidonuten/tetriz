@@ -10,7 +10,7 @@
  */
 #define PORT_NO 4444
 #define EPOLL_EVENT_MAX 5
-#define EPOLL_TIMEOUT 100
+#define EPOLL_TIMEOUT 400
 
 /**
 * Protocol related stuff
@@ -30,9 +30,10 @@
 /**
  * Helper macros
  */
-#define millis_now() (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count())
-#define millis_since(t) (millis_now() - (t))
-#define millis_to(t) ((t) - millis_now())
-#define millis_after(t) (millis_now() + (t))
+
+//#define millis_now() (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count())
+//#define millis_since(t) (millis_now() - (t))
+//#define millis_to(t) ((t) - millis_now())
+//#define millis_after(t) (millis_now() + (t))
 
 #endif //UNTITLED_CONSTANTS_H
