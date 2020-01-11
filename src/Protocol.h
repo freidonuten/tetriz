@@ -35,6 +35,10 @@ public:
     std::string handle(std::string& msg);
 
     std::string handle_room_active(std::string &msg);
+
+    std::string handle_room_time(std::string &basicString);
+
+    std::string handle_seed(std::string &basicString);
 };
 
 

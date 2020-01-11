@@ -7,9 +7,6 @@
 #include "Server.h"
 #include "CorruptedRequestException.h"
 
-Server::Server() {
-    this->proto = new Protocol(this);
-}
 
 bool Server::createPlayer(const std::string& name) {
     auto player = find_if(begin(this->playerPool), end(this->playerPool),
@@ -46,9 +43,8 @@ void Server::notify(int fileDescriptor) {
         if (result == 0) {
             if (this->getActivePlayer()) {
                 this->getActivePlayer()->disconnect();
-            } else {
-                close(this->fd);
             }
+            this->close(this->fd);
             return;
         } else if (result != chunk_size) {
             break; // did not fill the buffer
@@ -62,15 +58,19 @@ void Server::notify(int fileDescriptor) {
     } catch (CorruptedRequestException& e){
         if (this->getActivePlayer()){
             this->getActivePlayer()->logout();
-        } else {
-            close(this->fd);
         }
+        this->close(this->fd);
     }
     char response_buffer[response.length()];
 
     // send response
     response.copy(response_buffer, response.length());
     write(fileDescriptor, response_buffer, response.length());
+
+    // disconnect if login failed
+    if (!this->getActivePlayer()){
+        this->close(this->fd);
+    }
 }
 
 void Server::foreachRoom(const std::function<void(const std::shared_ptr<Room>&)>& consumer) {
@@ -104,8 +104,8 @@ bool Server::joinRoom(unsigned id) {
 
 unsigned Server::createRoom(unsigned plimit) {
     auto player = this->getPlayerByFD(this->fd);
-    if (player) {
-        std::shared_ptr<Room> room = player->getRoom();
+    if (player && this->roomLimit > this->roomPool.size()) {
+        std::shared_ptr<Room> room = player->getRoom().lock();
         if (room){
             return 0; // player already has a room
         }
@@ -142,7 +142,7 @@ std::shared_ptr<Player> Server::getPlayerByFD(int fileDescriptor) {
 
 std::shared_ptr<Room> Server::getActiveRoom() {
     auto player = this->getPlayerByFD(this->fd);
-    return player ? player->getRoom() : nullptr;
+    return player ? player->getRoom().lock() : nullptr;
 }
 
 std::shared_ptr<Player> Server::getActivePlayer() {
@@ -169,4 +169,18 @@ void Server::cleanUpRooms() {
             this->roomPool.erase(room);
         }
     }
+}
+
+void Server::closeActive() {
+    this->close(this->fd);
+}
+
+void Server::setCloseFunction(std::function<void(const int)> close) {
+    this->close = close;
+
+}
+
+Server::Server(int roomLimit) {
+    this->proto = new Protocol(this);
+    this->roomLimit = roomLimit;
 }

@@ -16,6 +16,7 @@ enum Message : unsigned char {
     ROOM_LIST       = 'C',
     PLAYER_LIST     = 'P',
     ROOM            = 'R',
+    ROOM_TIME       = 'O',
     JOIN            = 'J',
     LEAVE           = 'V',
     NEW             = 'N',
@@ -41,13 +42,14 @@ std::string Protocol::handle(std::string& msg) {
             case Message::JOIN:         return handle_room_join(msg);
             case Message::LEAVE:        return handle_room_leave(msg);
             case Message::ACTIVE_ROOM:  return handle_room_active(msg);
+            case Message::ROOM_TIME:    return handle_room_time(msg);
             case Message::ROOM:         return handle_room(msg);
             case Message::PLAYER_LIST:  return handle_player_list(msg);
             case Message::DELTA:        return handle_delta(msg);
             case Message::MOVE:         return handle_move(msg);
             case Message::MOVE_GET:     return handle_move_get(msg);
             case Message::MOVE_LAST_TS: return handle_move_last_timestamp(msg);
-            case Message::SEED:         break; //handle_see(msg);
+            case Message::SEED:         return handle_seed(msg);
         }
     } else {  // logged off actions
         switch(msg.at(0)) {
@@ -133,6 +135,17 @@ std::string Protocol::handle_room_active(std::string& msg) {
     }
 
     return Response().addInt(room->getId()).toString();
+}
+
+std::string Protocol::handle_room_time(std::string &msg) {
+    ProtoUtil::zero_arg_query(msg);
+
+    auto room = this->server->getActiveRoom();
+    if (!room) {
+        return RESPONSE_FAIL;
+    }
+
+    return Response().addInt(-room->getDeltaT()).toString();
 }
 
 std::string Protocol::handle_room(std::string &msg) {
@@ -221,5 +234,15 @@ std::string Protocol::handle_move_last_timestamp(std::string &msg){
     return Response()
         .addInt(room->getMoveTimestamp(player, room->getMoveCount(player) - 1))
         .toString();
+}
+
+std::string Protocol::handle_seed(std::string &msg) {
+    ProtoUtil::zero_arg_query(msg);
+    auto room = this->server->getActiveRoom();
+    if (!room) {
+        return RESPONSE_FAIL;
+    }
+
+    return Response().addInt(room->getSeed()).toString();
 }
 

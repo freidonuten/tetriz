@@ -22,11 +22,13 @@ private:
     std::set<std::shared_ptr<Player>> playerPool;
     std::set<std::shared_ptr<Room>> roomPool;
     std::shared_ptr<Player> active;
+    std::function<void(const int)> close;
+    int roomLimit;
     int fd;
 
 
 public:
-    Server();
+    Server(int roomLimit);
 
     unsigned createRoom(unsigned plimit);
     bool createPlayer(const std::string& name);
@@ -34,6 +36,7 @@ public:
     std::shared_ptr<Room> getRoomById(unsigned roomId);
     void notify(int fileDescriptor);
     void cleanUpRooms();
+    void setCloseFunction(std::function<void(const int)> close);
 
     std::shared_ptr<Player> getPlayerByFD(int fileDescriptor);
     std::shared_ptr<Player> getPlayerByName(const std::string& name);
@@ -42,6 +45,7 @@ public:
 
     void foreachRoom(const std::function<void(const std::shared_ptr<Room> &)> &consumer);
     void foreachPlayer(const std::function<void(const std::shared_ptr<Player> &)> &consumer);
+    void closeActive();
 };
 
 

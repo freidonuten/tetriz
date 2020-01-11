@@ -29,6 +29,7 @@ private:
     > moves;
     unsigned roomId;
     unsigned playerLimit;
+    unsigned seed;
     std::chrono::high_resolution_clock::time_point startTime;
 
 public:
@@ -39,6 +40,7 @@ public:
     bool join(std::shared_ptr<Player> player);
     void foreachPlayer(const std::function<void(const std::shared_ptr<Player>&)> &consumer);
 
+    unsigned getSeed() const;
     unsigned getId() const;
     unsigned getPlayerCount() const;
     unsigned getPlayerLimit() const;

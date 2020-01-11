@@ -10,7 +10,9 @@
  */
 #define PORT_NO 4444
 #define EPOLL_EVENT_MAX 5
-#define EPOLL_TIMEOUT 400
+#define EPOLL_TIMEOUT 100
+#define PLAYER_LIMIT 2048
+#define ROOM_LIMIT 256
 
 /**
 * Protocol related stuff

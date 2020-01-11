@@ -25,7 +25,7 @@ private:
     int sockfd;
     std::chrono::high_resolution_clock::time_point timestamp;
     std::string name;
-    std::shared_ptr<Room> room;
+    std::weak_ptr<Room> room;
     State state;
 
 public:
@@ -34,11 +34,11 @@ public:
 
     int getFileDescriptor() const;
     std::string getName() const;
-    std::shared_ptr<Room> getRoom() const;
+    std::weak_ptr<Room> getRoom() const;
     void logout();
     void connect(int fd);
     void disconnect();
-    void setRoom(std::shared_ptr<Room> r);
+    void setRoom(const std::shared_ptr<Room>& r);
     void refreshTimestamp();
     long getInactivityMs();
     bool isDead();

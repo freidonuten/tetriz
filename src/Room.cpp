@@ -4,6 +4,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <ctime>
 #include "Room.h"
 #include "constants.h"
 
@@ -12,6 +13,8 @@ unsigned Room::lastId = 0;
 Room::Room() {}
 
 Room::Room(unsigned plimit, std::shared_ptr<Player> owner) {
+    srand(time(nullptr));
+    this->seed = rand();
     this->roomId = ++Room::lastId;
 //    this->startTime = START_TIME_UNSET;
     this->playerLimit = plimit;
@@ -34,7 +37,7 @@ void Room::kick(std::shared_ptr<Player> player) {
 }
 
 bool Room::join(std::shared_ptr<Player> player) {
-    if (getPlayerCount() < getPlayerLimit() && !player->getRoom()) {
+    if (getPlayerCount() < getPlayerLimit() && !player->getRoom().lock()) {
         player->setRoom(shared_from_this());
         this->players.push_back(std::move(player));
         if (this->players.size() == this->playerLimit) {
@@ -104,4 +107,8 @@ bool Room::isActive() {
             return !p->isDead();
         }
     ) != this->players.end();
+}
+
+unsigned Room::getSeed() const {
+    return this->seed;
 }

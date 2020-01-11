@@ -40,23 +40,22 @@ std::string Player::getName() const {
     return this->name;
 }
 
-std::shared_ptr<Room> Player::getRoom() const {
+std::weak_ptr<Room> Player::getRoom() const {
     return this->room;
 }
 
-void Player::setRoom(std::shared_ptr<Room> r) {
-    this->room = std::move(r);
+void Player::setRoom(const std::shared_ptr<Room>& r) {
+    this->room = r;
 }
 
 void Player::logout() {
     this->disconnect();
-    if (this->room){
-        this->room->kick(shared_from_this());
+    if (auto spt = this->room.lock()){
+        spt->kick(shared_from_this());
     }
 }
 
 void Player::disconnect() {
-    close(this->sockfd);
     this->sockfd = -1;
     this->state = Player::State::DISCONNECTED;
 }
