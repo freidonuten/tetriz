@@ -34,6 +34,10 @@ Protocol::Protocol(Server* server) {
 }
 
 std::string Protocol::handle(std::string& msg) {
+    if (msg.length() == 0) {
+        throw CorruptedRequestException();
+    }
+
     if (this->server->getActivePlayer()){ // logged in actions
         this->server->getActivePlayer()->refreshTimestamp();
         switch(msg.at(0)) {
