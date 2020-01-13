@@ -7,6 +7,7 @@
 #include <utility>
 #include <zconf.h>
 #include <chrono>
+#include <fcntl.h>
 #include "constants.h"
 
 Player::Player() {
@@ -28,7 +29,6 @@ bool Player::operator==(const std::string& playerName) const {
 Player::Player(std::string name, int fileDescriptor) {
     this->refreshTimestamp();
     this->name = std::move(name);
-    this->state = State::LOBBY;
     this->sockfd = fileDescriptor;
 }
 
@@ -57,12 +57,10 @@ void Player::logout() {
 
 void Player::disconnect() {
     this->sockfd = -1;
-    this->state = Player::State::DISCONNECTED;
 }
 
 void Player::connect(int fd) {
     this->sockfd = fd;
-    this->state = Player::State::LOBBY;
     this->refreshTimestamp();
 }
 
@@ -76,7 +74,6 @@ long Player::getInactivityMs() {
 }
 
 bool Player::isDead() {
-    return this->state == Player::State::DISCONNECTED
-        || this->getInactivityMs() > ACTIVE_TIMEOUT_MS;
+    return fcntl(this->sockfd, F_GETFD) == -1;
 }
 

@@ -14,19 +14,11 @@ class Room;
 class Player : public std::enable_shared_from_this<Player> {
 
 private:
-    enum class State {
-        DISCONNECTED,
-        LOBBY,
-        PLAYING,
-        SPECTATING
-    };
-
 
     int sockfd;
     std::chrono::high_resolution_clock::time_point timestamp;
     std::string name;
     std::weak_ptr<Room> room;
-    State state;
 
 public:
     Player();
