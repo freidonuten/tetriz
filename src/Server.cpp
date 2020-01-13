@@ -160,14 +160,18 @@ std::shared_ptr<Player> Server::getPlayerByName(const std::string &name) {
 }
 
 void Server::cleanUpRooms() {
-    for(const std::shared_ptr<Room>& room: this->roomPool) {
+    for (auto roomIt = this->roomPool.begin(); roomIt != this->roomPool.end(); ) {
+        auto room = *roomIt;
         if (!room->isActive()) {
-            room->foreachPlayer([room](const std::shared_ptr<Player>& player){
+            room->foreachPlayer([&room](const std::shared_ptr<Player>& player){
                 if (player){
                     room->kick(player);
                 }
             });
-            this->roomPool.erase(room);
+
+            this->roomPool.erase(roomIt++);
+        } else {
+            ++roomIt;
         }
     }
 }
@@ -176,12 +180,15 @@ void Server::closeActive() {
     this->close(this->fd);
 }
 
-void Server::setCloseFunction(std::function<void(const int)> close) {
-    this->close = close;
+void Server::setCloseFunction(std::function<void(const int)> closeFunc) {
+    this->close = std::move(closeFunc);
 
 }
 
 Server::Server(int roomLimit) {
     this->proto = new Protocol(this);
     this->roomLimit = roomLimit;
+    this->roomPool = std::set<std::shared_ptr<Room>>();
+    this->playerPool = std::set<std::shared_ptr<Player>>();
+    this->fd = -1;
 }
