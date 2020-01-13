@@ -19,8 +19,8 @@ bool Server::createPlayer(const std::string& name) {
             (*player)->connect(this->fd);
             return true;
         }
-        // player exists and is active...
-        return false;
+        // if player is logged in, just nod him success
+        return (*player)->getFileDescriptor() == this->fd;
     }
 
     // new player
