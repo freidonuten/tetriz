@@ -77,7 +77,9 @@ std::string Protocol::handle_room_list(std::string& msg) {
     // prepare response
     Response response;
     this->server->foreachRoom([&response](const std::shared_ptr<Room>& room){
-        response.addInt(room->getId());
+        if (room->getDeltaT() >= 0) {
+            response.addInt(room->getId());
+        }
     });
 
     // return response as string

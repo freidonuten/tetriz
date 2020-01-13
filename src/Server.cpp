@@ -6,6 +6,7 @@
 #include <zconf.h>
 #include "Server.h"
 #include "CorruptedRequestException.h"
+#include "constants.h"
 
 
 bool Server::createPlayer(const std::string& name) {
@@ -46,7 +47,7 @@ void Server::notify(int fileDescriptor) {
             }
             this->close(this->fd);
             return;
-        } else if (result != chunk_size) {
+        } else if (result != chunk_size || msg[msg.length() - 1] == MSG_SEP) {
             break; // did not fill the buffer
         }
     }
@@ -94,7 +95,7 @@ bool Server::joinRoom(unsigned id) {
 
     // try to find room with such id
     std::shared_ptr<Room> room = this->getRoomById(id);
-    if (!room) {
+    if (!room || room->getDeltaT() < 0) {
         return false;
     }
 

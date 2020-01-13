@@ -30,7 +30,7 @@ private:
     unsigned roomId;
     unsigned playerLimit;
     unsigned seed;
-    std::chrono::high_resolution_clock::time_point startTime;
+    std::unique_ptr<std::chrono::high_resolution_clock::time_point> startTime;
 
 public:
     Room();
