@@ -55,11 +55,12 @@ std::string Protocol::handle(std::string& msg) {
             case Message::MOVE_LAST_TS: return handle_move_last_timestamp(msg);
             case Message::SEED:         return handle_seed(msg);
         }
-    } else {  // logged off actions
-        switch(msg.at(0)) {
-            case Message::LOGIN:        return handle_login(msg);
-            case Message::PING:         return RESPONSE_SUCCESS;
-        }
+    }
+
+    // logged off actions
+    switch(msg.at(0)) {
+        case Message::LOGIN:        return handle_login(msg);
+        case Message::PING:         return RESPONSE_SUCCESS;
     }
 
     throw CorruptedRequestException();
