@@ -15,7 +15,7 @@ bool Server::createPlayer(const std::string& name) {
 
     if (player != end(this->playerPool)) {
         // reconnect player
-        if ((*player)->isDead()){
+        if ((*player)->isDead() || (*player)->getInactivityMs() > ACTIVE_TIMEOUT_MS){
             (*player)->connect(this->fd);
             return true;
         }

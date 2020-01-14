@@ -74,6 +74,6 @@ long Player::getInactivityMs() {
 }
 
 bool Player::isDead() {
-    return fcntl(this->sockfd, F_GETFD) == -1 || this->getInactivityMs() >= ACTIVE_TIMEOUT_MS;
+    return fcntl(this->sockfd, F_GETFD) == -1;
 }
 
