@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <zconf.h>
+#include <iostream>
 #include "Server.h"
 #include "CorruptedRequestException.h"
 #include "constants.h"
@@ -55,8 +56,10 @@ void Server::notify(int fileDescriptor) {
     // handle user request
     std::string response;
     try {
+        std::cout << "[" << this->fd << "] Received: " << msg;
         response = this->proto->handle(msg);
     } catch (CorruptedRequestException& e){
+        std::cout << "[" << this->fd << "] Corrupted request, closing client socket...\n";
         if (this->getActivePlayer()){
             this->getActivePlayer()->logout();
         }
@@ -65,6 +68,7 @@ void Server::notify(int fileDescriptor) {
     char response_buffer[response.length()];
 
     // send response
+    std::cout << "[" << this->fd << "] Sending: " << response;
     response.copy(response_buffer, response.length());
     write(fileDescriptor, response_buffer, response.length());
 
@@ -168,7 +172,7 @@ void Server::cleanUpRooms() {
                     room->kick(player);
                 }
             });
-
+            std::cout << "[GC] room_" << room->getId() << std::endl;
             this->roomPool.erase(roomIt++);
         } else {
             ++roomIt;

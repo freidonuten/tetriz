@@ -107,5 +107,6 @@ int main(int argc, char* argv[]) {
         }
 
         serverInstance->cleanUpRooms();
+        // fixme clean up inactive players?
     }
 }
