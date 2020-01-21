@@ -28,6 +28,10 @@ int main(int argc, char* argv[]) {
             default: std::cerr << "Err: args not recognized\n";
                 return 9;
         }
+        if (!port) {
+            std::cerr << "Invalid port\n";
+            return 10;
+        }
     } catch (std::exception& e) {
         std::cerr << "Err: failed to parse arguments\n";
     }
