@@ -6,6 +6,7 @@
 #define UNTITLED_MESSAGETOKENIZER_H
 
 #include <memory>
+#include <string>
 
 class MessageTokenizer {
 private:
