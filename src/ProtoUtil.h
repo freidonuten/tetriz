@@ -1,40 +1,45 @@
-//
-// Created by martin on 05.01.20.
-//
+#pragma once
 
-#ifndef UNTITLED_PROTOUTIL_H
-#define UNTITLED_PROTOUTIL_H
-
+#include <cstdint>
 #include <memory>
 #include "MessageTokenizer.h"
 #include "CorruptedRequestException.h"
 
-namespace ProtoUtil {
+namespace ProtoUtil
+{
 
-    unsigned uint_query(std::string& msg) {
+    auto uint_query(std::string& msg) -> uint32_t
+    {
         MessageTokenizer mtok(msg);
-        unsigned i = mtok.nextUInt();
-        if (!mtok.isDone() || i == -1) {
+        auto integer = mtok.next_uint();
+
+        if (!mtok.is_done() || integer == -1)
+        {
             throw CorruptedRequestException();
         }
-        return i;
+
+        return integer;
     }
 
-    std::string string_query(std::string& msg) {
+    auto string_query(std::string& msg) -> std::string
+    {
         MessageTokenizer mtok = MessageTokenizer(msg);
-        std::string s = mtok.nextString();
-        if (s.length() == 0 || !mtok.isDone()){
+        auto string = mtok.next_string();
+
+        if (string.empty() || !mtok.is_done())
+        {
             throw CorruptedRequestException();
         }
-        return s;
+
+        return string;
     }
 
-    void zero_arg_query(std::string& msg) {
-        if (!MessageTokenizer(msg).isDone()){
+    void zero_arg_query(std::string& msg)
+    {
+        if (!MessageTokenizer(msg).is_done())
+        {
             throw CorruptedRequestException();
         }
     }
 
 }
-
-#endif //UNTITLED_PROTOUTIL_H

@@ -1,105 +1,133 @@
-//
-// Created by martin on 03.01.20.
-//
-
 #include <algorithm>
 #include <zconf.h>
 #include <iostream>
 #include "Server.h"
+#include "Player.h"
+#include "Protocol.h"
 #include "CorruptedRequestException.h"
 #include "constants.h"
+#include "Room.h"
 
 
-bool Server::createPlayer(const std::string& name) {
-    auto player = find_if(begin(this->playerPool), end(this->playerPool),
-            [name] (const std::shared_ptr<Player>& p) { return *p == name; });
+Server::Server(int roomLimit)
+    : protocol(new Protocol(this)), roomLimit(roomLimit)
+{ }
 
-    if (player != end(this->playerPool)) {
+auto Server::create_player(const std::string& name) -> bool
+{
+    const auto name_matches = [name] (const auto& player) { return *player == name; };
+    const auto player_iter = find_if(players.begin(), players.end(), name_matches);
+
+    if (player_iter != end(players))
+    {
+        const auto& player = *player_iter;
+
         // reconnect player
-        if ((*player)->isDead() || (*player)->getInactivityMs() > ACTIVE_TIMEOUT_MS){
-            (*player)->connect(this->fd);
+        if (player->is_dead() || player->get_inactivity_ms() > ACTIVE_TIMEOUT_MS){
+            player->connect(fd);
             return true;
         }
+
         // if player is logged in, just nod him success
-        return (*player)->getFileDescriptor() == this->fd;
+        return player->get_file_descriptor() == fd;
     }
 
     // new player
-    this->playerPool.insert(std::make_shared<Player>(name, this->fd));
+    players.insert(std::make_shared<Player>(name, fd));
+
     return true;
 }
 
-void Server::notify(int fileDescriptor) {
-    this->active = nullptr;
-    this->fd = fileDescriptor;
-
-    // todo make it beautiful
-    const int chunk_size = 16;
-    std::string msg = std::string("");
+void Server::notify(int fileDescriptor)
+{
+    active = nullptr;
+    fd = fileDescriptor;
+    auto message = std::string("");
 
     // should feed msg until buffer stops overflowing
-    while (true) {
-        char buffer[chunk_size + 1]{};
-        int result = read(fileDescriptor, buffer, chunk_size);
-        msg += buffer;
-        if (result == 0) {
-            if (this->getActivePlayer()) {
-                this->getActivePlayer()->disconnect();
+    while (true)
+    {
+        auto chunk = std::array<char, 17>{0};
+        int result = read(fileDescriptor, chunk.data(), chunk.size());
+        message += chunk.data(); // FIXME read directly into message string
+
+        if (result == 0)
+        {
+            if (get_active_player())
+            {
+                get_active_player()->disconnect();
             }
-            this->close(this->fd);
+
+            close(fd);
             return;
-        } else if (result != chunk_size || msg[msg.length() - 1] == MSG_SEP) {
+        }
+
+        if (result != chunk.size() || message[message.length() - 1] == MSG_SEP)
+        {
             break; // did not fill the buffer
         }
     }
 
     // handle user request
-    std::string response;
-    try {
-        std::cout << "[" << this->fd << "] Received: " << msg;
-        response = this->proto->handle(msg);
-    } catch (CorruptedRequestException& e){
-        std::cout << "[" << this->fd << "] Corrupted request, closing client socket...\n";
-        if (this->getActivePlayer()){
-            this->getActivePlayer()->logout();
-        }
-        this->close(this->fd);
+    auto response = std::string{};
+
+    try
+    {
+        std::cout << "[" << fd << "] Received: " << message;
+        response = protocol->handle(message);
     }
-    char response_buffer[response.length()];
+    catch (const CorruptedRequestException& e)
+    {
+        std::cout << "[" << fd << "] Corrupted request, closing client socket...\n";
+
+        if (get_active_player())
+        {
+            get_active_player()->logout();
+        }
+
+        close(fd);
+    }
 
     // send response
-    std::cout << "[" << this->fd << "] Sending: " << response;
-    response.copy(response_buffer, response.length());
-    write(fileDescriptor, response_buffer, response.length());
+    std::cout << "[" << fd << "] Sending: " << response;
+    write(fileDescriptor, response.data(), response.length());
 
     // disconnect if login failed
-    if (!this->getActivePlayer()){
-        this->close(this->fd);
+    if (!get_active_player())
+    {
+        close(fd);
     }
 }
 
-void Server::foreachRoom(const std::function<void(const std::shared_ptr<Room>&)>& consumer) {
-    for (const std::shared_ptr<Room>& r: this->roomPool) {
-        consumer(r);
+void Server::foreach_room(const std::function<void(const std::shared_ptr<Room>&)>& consumer)
+{
+    for (const auto& room: rooms)
+    {
+        consumer(room);
     }
 }
 
-void Server::foreachPlayer(const std::function<void(const std::shared_ptr<Player>&)>& consumer) {
-    for (const std::shared_ptr<Player>& p: this->playerPool) {
-        consumer(p);
+void Server::foreach_player(const std::function<void(const std::shared_ptr<Player>&)>& consumer)
+{
+    for (const std::shared_ptr<Player>& player: players)
+    {
+        consumer(player);
     }
 }
 
-bool Server::joinRoom(unsigned id) {
+auto Server::join_room(unsigned room_id) -> bool
+{
     // try to match player with file descriptor
-    std::shared_ptr<Player> player = this->getPlayerByFD(this->fd);
-    if (!player) {
+    auto player = get_player_by_fd(fd);
+    if (!player)
+    {
         return false;
     }
 
     // try to find room with such id
-    std::shared_ptr<Room> room = this->getRoomById(id);
-    if (!room || room->getDeltaT() < 0) {
+    auto room = get_room_by_id(room_id);
+    if (!room || room->get_delta_t() < 0)
+    {
         return false;
     }
 
@@ -107,92 +135,98 @@ bool Server::joinRoom(unsigned id) {
     return room->join(player);
 }
 
-unsigned Server::createRoom(unsigned plimit) {
-    auto player = this->getPlayerByFD(this->fd);
-    if (player && this->roomLimit > this->roomPool.size()) {
-        std::shared_ptr<Room> room = player->getRoom().lock();
+auto Server::create_room(unsigned plimit) -> unsigned
+{
+    auto player = get_player_by_fd(fd);
+
+    if (player && roomLimit > rooms.size())
+    {
+        auto room = player->get_room().lock();
         if (room){
             return 0; // player already has a room
         }
-        room = std::make_shared<Room>(plimit, player);
-        this->roomPool.insert(room);
-        player->setRoom(room);
 
-        return room->getId();
+        room = std::make_shared<Room>(plimit, player);
+        rooms.insert(room);
+        player->set_room(room);
+
+        return room->get_id();
     }
 
     return 0;
 }
 
-std::shared_ptr<Room> Server::getRoomById(unsigned int roomId) {
-    auto roomFound = std::find_if(
-        begin(this->roomPool),
-        end(this->roomPool),
-        [&roomId](const std::shared_ptr<Room>& r){ return r->getId() == roomId; }
-    );
+auto Server::get_room_by_id(uint32_t room_id) const -> std::shared_ptr<Room>
+{
+    const auto id_matches = [&room_id](const auto& room){ return room->get_id() == room_id; };
+    const auto room_iter = std::find_if(rooms.begin(), rooms.end(), id_matches);
 
-    return roomFound == end(this->roomPool) ? nullptr : *roomFound;
+    return room_iter == end(rooms) ? nullptr : *room_iter;
 }
 
 
 
-std::shared_ptr<Player> Server::getPlayerByFD(int fileDescriptor) {
-    auto playerFound = find_if(begin(this->playerPool), end(this->playerPool),
-          [fileDescriptor] (const std::shared_ptr<Player>& p) {
-                return p->getFileDescriptor() == fileDescriptor;
-    });
+auto Server::get_player_by_fd(int32_t file_descriptor) const -> std::shared_ptr<Player>
+{
+    const auto fd_matches = [file_descriptor] (const auto& player) {
+        return player->get_file_descriptor() == file_descriptor;
+    };
+    auto playerFound = find_if(players.begin(), players.end(), fd_matches);
 
-    return playerFound == end(this->playerPool) ? nullptr : *playerFound;
+    return playerFound == end(players) ? nullptr : *playerFound;
 }
 
-std::shared_ptr<Room> Server::getActiveRoom() {
-    auto player = this->getPlayerByFD(this->fd);
-    return player ? player->getRoom().lock() : nullptr;
+auto Server::get_active_room() const -> std::shared_ptr<Room>
+{
+    auto player = get_player_by_fd(fd);
+    return player ? player->get_room().lock() : nullptr;
 }
 
-std::shared_ptr<Player> Server::getActivePlayer() {
-    return !this->active
-        ? (this->active = this->getPlayerByFD(this->fd))
-        : this->active;
+auto Server::get_active_player() const -> std::shared_ptr<Player>
+{
+    return !active
+        ? (active = get_player_by_fd(fd))
+        : active;
 }
 
-std::shared_ptr<Player> Server::getPlayerByName(const std::string &name) {
-    auto player = std::find_if(this->playerPool.begin(), this->playerPool.end(),
-            [&name](const std::shared_ptr<Player>& p){ return *p == name; });
+auto Server::get_player_by_name(const std::string &name) const -> std::shared_ptr<Player>
+{
+    const auto name_matches = [&name](const auto& player){ return *player == name; };
+    const auto player = std::find_if(players.begin(), players.end(), name_matches);
 
-    return player == this->playerPool.end() ? nullptr : *player;
+    return player == players.end() ? nullptr : *player;
 }
 
-void Server::cleanUpRooms() {
-    for (auto roomIt = this->roomPool.begin(); roomIt != this->roomPool.end(); ) {
-        auto room = *roomIt;
-        if (!room->isActive()) {
-            room->foreachPlayer([&room](const std::shared_ptr<Player>& player){
-                if (player){
-                    room->kick(player);
-                }
-            });
-            std::cout << "[GC] room_" << room->getId() << std::endl;
-            this->roomPool.erase(roomIt++);
-        } else {
-            ++roomIt;
+void Server::clean_up_rooms()
+{
+    for (auto room_iter = rooms.begin(); room_iter != rooms.end(); )
+    {
+        auto room = *room_iter;
+
+        if (!room->is_active())
+        {
+            const auto kick_player = [&room](const auto& player){
+                if (player){ room->kick(player); }
+            };
+
+            room->foreach_player(kick_player);
+            rooms.erase(room_iter++);
+
+            std::cout << "[GC] room_" << room->get_id() << std::endl;
+
+            continue;
         }
+
+        ++room_iter;
     }
 }
 
-void Server::closeActive() {
-    this->close(this->fd);
+void Server::close_active()
+{
+    close(fd);
 }
 
-void Server::setCloseFunction(std::function<void(const int)> closeFunc) {
-    this->close = std::move(closeFunc);
-
-}
-
-Server::Server(int roomLimit) {
-    this->proto = new Protocol(this);
-    this->roomLimit = roomLimit;
-    this->roomPool = std::set<std::shared_ptr<Room>>();
-    this->playerPool = std::set<std::shared_ptr<Player>>();
-    this->fd = -1;
+void Server::set_close_function(std::function<void(const int)> closeFunc)
+{
+    close = std::move(closeFunc);
 }

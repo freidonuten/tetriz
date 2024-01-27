@@ -1,52 +1,46 @@
-//
-// Created by martin on 03.01.20.
-//
-
-#ifndef UNTITLED_SERVER_H
-#define UNTITLED_SERVER_H
+#pragma once
 
 #include <map>
 #include <set>
 #include <memory>
 #include <functional>
 
-#include "Player.h"
-#include "Room.h"
-#include "Protocol.h"
-
+class Player;
+class Room;
 class Protocol;
-class Server {
+
+class Server
+{
+public:
+    Server(int32_t roomLimit);
+
+    auto create_room(uint32_t plimit) -> uint32_t;
+    auto create_player(const std::string& name) -> bool;
+    auto join_room(uint32_t room_id) -> bool;
+    void notify(int32_t fileDescriptor);
+    void clean_up_rooms();
+    void set_close_function(std::function<void(const int32_t)> closeFunc);
+
+    void foreach_room(const std::function<void(const std::shared_ptr<Room> &)> &consumer);
+    void foreach_player(const std::function<void(const std::shared_ptr<Player> &)> &consumer);
+    void close_active();
+
+
+    [[nodiscard]] auto get_player_by_fd(int32_t file_descriptor) const -> std::shared_ptr<Player>;
+    [[nodiscard]] auto get_player_by_name(const std::string& name) const -> std::shared_ptr<Player>;
+    [[nodiscard]] auto get_active_player() const -> std::shared_ptr<Player>;
+
+    [[nodiscard]] auto get_room_by_id(uint32_t room_id) const -> std::shared_ptr<Room>;
+    [[nodiscard]] auto get_active_room() const -> std::shared_ptr<Room>;
 
 private:
-    Protocol* proto;
-    std::set<std::shared_ptr<Player>> playerPool;
-    std::set<std::shared_ptr<Room>> roomPool;
-    std::shared_ptr<Player> active;
-    std::function<void(const int)> close;
-    int roomLimit;
-    int fd{};
+    mutable std::shared_ptr<Player> active;
 
+    Protocol* protocol;
+    std::set<std::shared_ptr<Player>> players;
+    std::set<std::shared_ptr<Room>> rooms;
+    std::function<void(const int32_t)> close;
+    int32_t roomLimit;
+    int32_t fd = -1;
 
-public:
-    Server(int roomLimit);
-
-    unsigned createRoom(unsigned plimit);
-    bool createPlayer(const std::string& name);
-    bool joinRoom(unsigned id);
-    std::shared_ptr<Room> getRoomById(unsigned roomId);
-    void notify(int fileDescriptor);
-    void cleanUpRooms();
-    void setCloseFunction(std::function<void(const int)> closeFunc);
-
-    std::shared_ptr<Player> getPlayerByFD(int fileDescriptor);
-    std::shared_ptr<Player> getPlayerByName(const std::string& name);
-    std::shared_ptr<Room> getActiveRoom();
-    std::shared_ptr<Player> getActivePlayer();
-
-    void foreachRoom(const std::function<void(const std::shared_ptr<Room> &)> &consumer);
-    void foreachPlayer(const std::function<void(const std::shared_ptr<Player> &)> &consumer);
-    void closeActive();
 };
-
-
-#endif //UNTITLED_SERVER_H

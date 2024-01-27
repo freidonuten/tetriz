@@ -1,17 +1,17 @@
-//
-// Created by martin on 03.01.20.
-//
-
 #include <iostream>
 #include "Protocol.h"
 #include "MessageTokenizer.h"
 #include "Response.h"
+#include "Server.h"
+#include "Player.h"
 #include "constants.h"
 #include "CorruptedRequestException.h"
 #include "ProtoUtil.h"
+#include "Room.h"
 
 
-enum Message : unsigned char {
+enum class Message : unsigned char
+{
     LOGIN           = 'L',
     ROOM_LIST       = 'C',
     PLAYER_LIST     = 'P',
@@ -29,18 +29,25 @@ enum Message : unsigned char {
     ACTIVE_ROOM     = '?',
 };
 
-Protocol::Protocol(Server* server) {
-    this->server = server;
-}
+Protocol::Protocol(Server* server)
+    : server(server)
+{ }
 
-std::string Protocol::handle(std::string& msg) {
-    if (msg.length() == 0) {
+auto Protocol::handle(std::string& msg) -> std::string
+{
+    if (msg.empty())
+    {
         throw CorruptedRequestException();
     }
 
-    if (this->server->getActivePlayer()){ // logged in actions
-        this->server->getActivePlayer()->refreshTimestamp();
-        switch(msg.at(0)) {
+    const auto command = static_cast<Message>(msg.front());
+
+    if (server->get_active_player())
+    {
+        // logged in actions
+        server->get_active_player()->refresh_timestamp();
+        switch(command)
+        {
             case Message::ROOM_LIST:    return handle_room_list(msg);
             case Message::NEW:          return handle_room_create(msg);
             case Message::JOIN:         return handle_room_join(msg);
@@ -58,198 +65,235 @@ std::string Protocol::handle(std::string& msg) {
     }
 
     // logged off actions
-    switch(msg.at(0)) {
+    switch(command) {
         case Message::LOGIN:        return handle_login(msg);
-        case Message::PING:         return RESPONSE_SUCCESS;
+        case Message::PING:         return std::string{RESPONSE_SUCCESS};
     }
 
     throw CorruptedRequestException();
 }
 
-std::string Protocol::handle_login(std::string& msg) {
-    return this->server->createPlayer(ProtoUtil::string_query(msg))
+auto Protocol::handle_login(std::string& msg) -> std::string
+{
+    return server->create_player(ProtoUtil::string_query(msg))
         ? RESPONSE_SUCCESS
         : RESPONSE_FAIL;
 }
 
-std::string Protocol::handle_room_list(std::string& msg) {
+auto Protocol::handle_room_list(std::string& msg) -> std::string
+{
     ProtoUtil::zero_arg_query(msg);
 
-    // prepare response
-    Response response;
-    this->server->foreachRoom([&response](const std::shared_ptr<Room>& room){
-        if (room->getDeltaT() >= 0) {
-            response.addInt(room->getId());
+    auto response = Response{};
+    const auto record_id = [&response](const std::shared_ptr<Room>& room) {
+        if (room->get_delta_t() >= 0)
+        {
+            response.add_int(room->get_id());
         }
-    });
+    };
+
+    server->foreach_room(record_id);
 
     // return response as string
-    return response.toString();
+    return response.to_string();
 }
 
-std::string Protocol::handle_room_create(std::string& msg) {
-    unsigned playerLimit = ProtoUtil::uint_query(msg);
-    unsigned roomId = this->server->createRoom(playerLimit);
+auto Protocol::handle_room_create(std::string& msg) -> std::string
+{
+    const auto playerLimit = ProtoUtil::uint_query(msg);
+    const auto roomId = server->create_room(playerLimit);
 
-    if (roomId == 0){
+    if (roomId == 0)
+    {
         return RESPONSE_FAIL;
     }
 
     return Response()
-        .addInt(roomId)
-        .toString();
+        .add_int(roomId)
+        .to_string();
 }
 
-std::string Protocol::handle_room_join(std::string& msg) {
-    return this->server->joinRoom(ProtoUtil::uint_query(msg))
+auto Protocol::handle_room_join(std::string& msg) -> std::string
+{
+    return server->join_room(ProtoUtil::uint_query(msg))
         ? RESPONSE_SUCCESS
         : RESPONSE_FAIL;
 }
 
-std::string Protocol::handle_room_leave(std::string& msg) {
+auto Protocol::handle_room_leave(std::string& msg) -> std::string
+{
     ProtoUtil::zero_arg_query(msg);
 
-    auto room = this->server->getActiveRoom();
-    if (!room) {
+    auto room = server->get_active_room();
+    if (!room)
+    {
         return RESPONSE_FAIL;
     }
 
-    room->kick(this->server->getActivePlayer());
+    room->kick(server->get_active_player());
 
     return RESPONSE_SUCCESS;
 }
 
-std::string Protocol::handle_player_list(std::string &msg) {
-    std::shared_ptr<Room> room = this->server->getRoomById(ProtoUtil::uint_query(msg));
-    if (!room){
+auto Protocol::handle_player_list(std::string &msg) -> std::string
+{
+    auto room = server->get_room_by_id(ProtoUtil::uint_query(msg));
+
+    if (!room)
+    {
         return RESPONSE_FAIL;
     }
 
-    Response response;
-    room->foreachPlayer([&response](const std::shared_ptr<Player>& p){
-        response.addString(p->getName());
-    });
+    auto response = Response{};
+    auto append_to_response = [&response](const auto& player){
+        response.add_string(player->get_name());
+    };
 
-    return response.toString();
+    room->foreach_player(append_to_response);
+
+    return response.to_string();
 }
 
-std::string Protocol::handle_room_active(std::string& msg) {
+auto Protocol::handle_room_active(std::string& msg) -> std::string
+{
     ProtoUtil::zero_arg_query(msg);
 
-    auto room = this->server->getActiveRoom();
-    if (!room){
+    auto room = server->get_active_room();
+    if (!room)
+    {
         return RESPONSE_FAIL;
     }
 
-    return Response().addInt(room->getId()).toString();
+    return Response().add_int(room->get_id()).to_string();
 }
 
-std::string Protocol::handle_room_time(std::string &msg) {
+auto Protocol::handle_room_time(std::string &msg) -> std::string
+{
     ProtoUtil::zero_arg_query(msg);
 
-    auto room = this->server->getActiveRoom();
-    if (!room) {
+    auto room = server->get_active_room();
+    if (!room)
+    {
         return RESPONSE_FAIL;
     }
 
-    return Response().addInt(-room->getDeltaT()).toString();
+    return Response().add_int(-room->get_delta_t()).to_string();
 }
 
-std::string Protocol::handle_room(std::string &msg) {
-    std::shared_ptr<Room> room = this->server->getRoomById(ProtoUtil::uint_query(msg));
-    if (!room) {
+auto Protocol::handle_room(std::string &msg) -> std::string
+{
+    auto room = server->get_room_by_id(ProtoUtil::uint_query(msg));
+    if (!room)
+    {
         return RESPONSE_FAIL;
     }
 
     return Response()
-        .addInt(room->getPlayerCount())
-        .addInt(room->getPlayerLimit())
-        .addString(room->getOwner()->getName())
-        .toString();
+        .add_int(room->get_player_count())
+        .add_int(room->get_player_limit())
+        .add_string(room->get_owner()->get_name())
+        .to_string();
 }
 
-std::string Protocol::handle_delta(std::string& msg) {
+auto Protocol::handle_delta(std::string& msg) -> std::string
+{
     ProtoUtil::zero_arg_query(msg);
 
-    std::shared_ptr<Room> room = this->server->getActiveRoom();
-    if (!room){
+    auto room = server->get_active_room();
+    if (!room)
+    {
         return RESPONSE_FAIL;
     }
 
-    long deltaT = std::max<long>(0L, room->getDeltaT());
+    long deltaT = std::max<long>(0L, room->get_delta_t());
 
     return Response()
-        .addInt(deltaT)
-        .toString();
+        .add_int(deltaT)
+        .to_string();
 }
 
-std::string Protocol::handle_move(std::string &msg) {
+auto Protocol::handle_move(std::string &msg) -> std::string
+{
     // invalid move?
     std::string move = ProtoUtil::string_query(msg);
-    if (!Protocol::validMoves.count(move)){
+    if (!Protocol::valid_moves.contains(move))
+    {
         return RESPONSE_FAIL;
     }
 
     // is player supposed to even move?
-    std::shared_ptr<Room> room = this->server->getActiveRoom();
-    if (!room || room->getDeltaT() > 0){
+    auto room = server->get_active_room();
+    if (!room || room->get_delta_t() > 0)
+    {
         return RESPONSE_FAIL;
     }
 
     // store the move
-    room->addMove(this->server->getActivePlayer(), move);
+    room->add_move(server->get_active_player(), move);
 
     return RESPONSE_SUCCESS;
 }
 
-std::string Protocol::handle_move_get(std::string &msg) {
-    MessageTokenizer mtok(msg);
-    std::string playerName = mtok.nextString();
-    int moveId = mtok.nextUInt();
+auto Protocol::handle_move_get(std::string &msg) -> std::string
+{
+    auto mtok = MessageTokenizer(msg);
+    auto playerName = mtok.next_string();
+    auto moveId = mtok.next_uint();
 
-    if (!mtok.isDone() || moveId == -1){
+    if (!mtok.is_done() || moveId == -1)
+    {
         return RESPONSE_FAIL;
     }
 
-    Response response;
+    auto response = Response{};
+    auto room = server->get_active_room();
 
-    auto room = this->server->getActiveRoom();
-    if (!room) {
+    if (!room)
+    {
         return RESPONSE_FAIL;
     }
 
-    auto player = this->server->getPlayerByName(playerName);
-    int max = room->getMoveCount(player);
+    auto player = server->get_player_by_name(playerName);
+    auto max = room->get_move_count(player);
 
-    for (int i = moveId; i < max; ++i) {
-        response.addString(room->getMove(player, i));
-        response.addInt(room->getMoveTimestamp(player, i));
+    for (int i = moveId; i < max; ++i)
+    {
+        response.add_string(room->get_move(player, i));
+        response.add_int(room->get_move_timestamp(player, i));
     }
 
-    return response.toString();
+    return response.to_string();
 }
 
-std::string Protocol::handle_move_last_timestamp(std::string &msg){
+auto Protocol::handle_move_last_timestamp(std::string &msg) -> std::string
+{
     ProtoUtil::zero_arg_query(msg);
 
-    auto room = this->server->getActiveRoom();
-    if (!room) {
+    auto room = server->get_active_room();
+
+    if (!room)
+    {
         return RESPONSE_FAIL;
     }
 
-    auto player = this->server->getActivePlayer();
+    auto player = server->get_active_player();
+
     return Response()
-        .addInt(room->getMoveTimestamp(player, room->getMoveCount(player) - 1))
-        .toString();
+        .add_int(room->get_move_timestamp(player, room->get_move_count(player) - 1))
+        .to_string();
 }
 
-std::string Protocol::handle_seed(std::string &msg) {
+auto Protocol::handle_seed(std::string &msg) -> std::string
+{
     ProtoUtil::zero_arg_query(msg);
-    auto room = this->server->getActiveRoom();
-    if (!room) {
+
+    auto room = server->get_active_room();
+
+    if (!room)
+    {
         return RESPONSE_FAIL;
     }
 
-    return Response().addInt(room->getSeed()).toString();
+    return Response().add_int(room->get_seed()).to_string();
 }
 

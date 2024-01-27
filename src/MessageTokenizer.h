@@ -1,32 +1,27 @@
-//
-// Created by martin on 03.01.20.
-//
-
-#ifndef UNTITLED_MESSAGETOKENIZER_H
-#define UNTITLED_MESSAGETOKENIZER_H
+#pragma once
 
 #include <memory>
 #include <string>
 
-class MessageTokenizer {
-private:
-    std::string base;
-    char lead;
-    int tok_start;
-    int tok_end;
-
-    void consumeDelimiters();
-    bool isTerminated();
-    bool isExhausted();
-
+class MessageTokenizer
+{
 public:
     MessageTokenizer(std::string& message);
-    bool isDone();
-    char leadingChar();
-    int nextUInt();
-    std::string nextString();
 
+    [[nodiscard]] auto is_done() const -> bool;
+    [[nodiscard]] auto leading_char() const -> char;
+
+    auto next_uint() -> int32_t;
+    auto next_string() -> std::string;
+
+private:
+    [[nodiscard]] auto is_terminated() const -> bool;
+    [[nodiscard]] auto is_exhausted() const -> bool;
+
+    void consumeDelimiters();
+
+    int32_t tok_start{};
+    int32_t tok_end = 1;
+    std::string base;
+    char lead;
 };
-
-
-#endif //UNTITLED_MESSAGETOKENIZER_H

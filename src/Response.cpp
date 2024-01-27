@@ -1,41 +1,42 @@
-//
-// Created by martin on 03.01.20.
-//
-
 #include "Response.h"
 #include "constants.h"
 
-Response& Response::addInt(unsigned i) {
-    this->ints.push_back(i);
+auto Response::add_int(uint32_t value) -> Response&
+{
+    integers.push_back(value);
     return *this;
 }
 
-Response& Response::addString(const std::string& s) {
-    this->strings.push_back(s);
+auto Response::add_string(const std::string& value) -> Response&
+{
+    strings.push_back(value);
     return *this;
 }
 
-Response& Response::setFail() {
-    this->success = false;
+auto Response::set_fail() -> Response&
+{
+    success = false;
     return *this;
 }
 
-Response& Response::setSuccess() {
-    this->success = true;
+auto Response::set_success() -> Response&
+{
+    success = true;
     return *this;
 }
 
-std::string Response::toString() {
-    std::string response = this->success
-            ? std::string(1, MSG_SUCCESS)
-            : std::string(1, MSG_FAIL);
+auto Response::to_string() -> std::string
+{
+    auto response = std::string{ success ? MSG_SUCCESS : MSG_FAIL };
 
-    for (unsigned i: this->ints) {
-        response.append(" " + std::to_string(i));
+    for (uint32_t integer: integers)
+    {
+        response.append(" " + std::to_string(integer));
     }
 
-    for (const std::string& s: this->strings) {
-        response.append(" " + s);
+    for (const auto& string : strings)
+    {
+        response.append(" " + string);
     }
 
     return response + MSG_SEP;

@@ -1,29 +1,22 @@
-//
-// Created by martin on 03.01.20.
-//
-
-#ifndef UNTITLED_RESPONSE_H
-#define UNTITLED_RESPONSE_H
+#pragma once
 
 #include <vector>
 #include <string>
 #include <memory>
 
 
-class Response {
+class Response
+{
+public:
+    auto add_int(uint32_t value) -> Response&;
+    auto add_string(const std::string& value) -> Response&;
+    auto set_fail() -> Response&;
+    auto set_success() -> Response&;
+    auto to_string() -> std::string;
 
 private:
     bool success = true;
-    std::vector<unsigned> ints;
+    std::vector<uint32_t> integers;
     std::vector<std::string> strings;
-
-public:
-    Response& addInt(unsigned i);
-    Response& addString(const std::string& s);
-    Response& setFail();
-    Response& setSuccess();
-    std::string toString();
 };
 
-
-#endif //UNTITLED_RESPONSE_H

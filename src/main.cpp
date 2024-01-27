@@ -11,7 +11,7 @@
 #include "CorruptedRequestException.h"
 
 
-int main(int argc, char* argv[]) {
+auto main(int argc, char* argv[]) -> int {
     in_addr_t host = INADDR_ANY;
     int port = PORT_NO;
     int pLimit = PLAYER_LIMIT;
@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
     // prepare Server instance
     auto serverInstance = std::make_unique<Server>(rLimit);
     int connections = 0;
-    serverInstance->setCloseFunction([&connections](const int fd){
+    serverInstance->set_close_function([&connections](const int fd){
         close(fd);
         --connections;
     });
@@ -111,7 +111,7 @@ int main(int argc, char* argv[]) {
             serverInstance->notify(events[i].data.fd);
         }
 
-        serverInstance->cleanUpRooms();
+        serverInstance->clean_up_rooms();
         // fixme clean up inactive players?
     }
 }

@@ -1,89 +1,98 @@
-//
-// Created by martin on 03.01.20.
-//
-
 #include "MessageTokenizer.h"
 #include "constants.h"
 
 
 
-MessageTokenizer::MessageTokenizer(std::string& message) {
-    this->base = message;
-    this->tok_end = 1;
-    this->lead = this->base.at(0);
-
+MessageTokenizer::MessageTokenizer(std::string& message)
+    : base(message)
+    , lead(base.front())
+    , tok_end(1)
+{
     // trim start
     consumeDelimiters();
-    this->tok_start = this->tok_end;
+    tok_start = tok_end;
 }
 
-bool MessageTokenizer::isTerminated() {
-    return this->base.at(this->base.length() - 1) == MSG_SEP;
+auto MessageTokenizer::is_terminated() const -> bool
+{
+    return base.at(base.length() - 1) == MSG_SEP;
 }
 
-bool MessageTokenizer::isExhausted() {
-    return this->tok_start >= this->base.length() - 1;
+auto MessageTokenizer::is_exhausted() const -> bool
+{
+    return tok_start >= base.length() - 1;
 }
 
-char MessageTokenizer::leadingChar() {
-    return this->lead;
+auto MessageTokenizer::leading_char() const -> char
+{
+    return lead;
 }
 
-int MessageTokenizer::nextUInt() {
-
-    int result = 0;
+auto MessageTokenizer::next_uint() -> int32_t
+{
+    constexpr auto numeric_base = 10;
+    auto result = 0;
 
     // build result
-    while (this->tok_end < this->base.length()){
-        char c = this->base.at(this->tok_end);
-        if (isdigit(c)) {
-            result = result * 10 + c - '0';
-            ++this->tok_end;
-        } else {
-            break;
+    while (tok_end < base.length())
+    {
+        const auto chr = base.at(tok_end);
+
+        if (isdigit(chr) != 0)
+        {
+            result = result * numeric_base + chr - '0';
+            ++tok_end;
+            continue;
         }
+
+        break;
     }
 
     // return result
-    if (this->tok_end != this->tok_start){
+    if (tok_end != tok_start)
+    {
         consumeDelimiters();
-        this->tok_start = this->tok_end;
+        tok_start = tok_end;
         return result;
-    } else {
-        return -1;
-    }
+    } 
 
+    return -1;
 }
 
-std::string MessageTokenizer::nextString() {
+auto MessageTokenizer::next_string() -> std::string {
 
     // iterate until delim/end of message
-    while (this->tok_end < this->base.length()) {
-        char c = this->base.at(this->tok_end);
+    while (tok_end < base.length())
+    {
+        const auto chr = base.at(tok_end);
 
-        if (c == MSG_DELIM || c == MSG_SEP) {
+        if (chr == MSG_DELIM || chr == MSG_SEP)
+        {
             break;
         }
 
-        ++this->tok_end;
+        ++tok_end;
     }
 
     // build result and set new boundaries
-    std::string result = this->base.substr(this->tok_start, this->tok_end - this->tok_start);
+    auto result = base.substr(tok_start, tok_end - tok_start);
     consumeDelimiters();
-    this->tok_start = this->tok_end;
+    tok_start = tok_end;
 
     return result;
 }
 
-void MessageTokenizer::consumeDelimiters() {
-    while (this->base.at(this->tok_end) == MSG_DELIM){
-        ++this->tok_end;
+void MessageTokenizer::consumeDelimiters()
+{
+    while (base.at(tok_end) == MSG_DELIM)
+    {
+        ++tok_end;
     }
 }
 
-bool MessageTokenizer::isDone() {
-    return isTerminated() && isExhausted();
+auto MessageTokenizer::is_done() const -> bool
+{
+    return is_terminated() && is_exhausted();
 }
 
 
