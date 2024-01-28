@@ -37,7 +37,7 @@ auto Protocol::handle(std::string& msg) -> std::string
 {
     if (msg.empty())
     {
-        throw CorruptedRequestException();
+        throw SerializerError("");
     }
 
     const auto command = static_cast<Message>(msg.front());
@@ -70,7 +70,7 @@ auto Protocol::handle(std::string& msg) -> std::string
         case Message::PING:         return std::string{RESPONSE_SUCCESS};
     }
 
-    throw CorruptedRequestException();
+    throw SerializerError("");
 }
 
 auto Protocol::handle_login(std::string& msg) -> std::string

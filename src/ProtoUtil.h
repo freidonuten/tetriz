@@ -15,7 +15,7 @@ namespace ProtoUtil
 
         if (!mtok.is_done() || integer == -1)
         {
-            throw CorruptedRequestException();
+            throw SerializerError("");
         }
 
         return integer;
@@ -28,7 +28,7 @@ namespace ProtoUtil
 
         if (string.empty() || !mtok.is_done())
         {
-            throw CorruptedRequestException();
+            throw SerializerError("");
         }
 
         return string;
@@ -38,7 +38,7 @@ namespace ProtoUtil
     {
         if (!MessageTokenizer(msg).is_done())
         {
-            throw CorruptedRequestException();
+            throw SerializerError("");
         }
     }
 

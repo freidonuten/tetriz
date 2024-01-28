@@ -76,7 +76,7 @@ void Server::notify(int fileDescriptor)
         std::cout << "[" << fd << "] Received: " << message;
         response = protocol->handle(message);
     }
-    catch (const CorruptedRequestException& e)
+    catch (const SerializerError& e)
     {
         std::cout << "[" << fd << "] Corrupted request, closing client socket...\n";
 
