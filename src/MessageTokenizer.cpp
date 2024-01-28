@@ -3,10 +3,9 @@
 
 
 
-MessageTokenizer::MessageTokenizer(std::string& message)
+MessageTokenizer::MessageTokenizer(std::string_view message)
     : base(message)
     , lead(base.front())
-    , tok_end(1)
 {
     // trim start
     consumeDelimiters();
@@ -75,11 +74,11 @@ auto MessageTokenizer::next_string() -> std::string {
     }
 
     // build result and set new boundaries
-    auto result = base.substr(tok_start, tok_end - tok_start);
+    const auto result = base.substr(tok_start, tok_end - tok_start);
     consumeDelimiters();
     tok_start = tok_end;
 
-    return result;
+    return std::string(result);
 }
 
 void MessageTokenizer::consumeDelimiters()

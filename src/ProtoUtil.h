@@ -23,7 +23,7 @@ namespace ProtoUtil
 
     auto string_query(std::string& msg) -> std::string
     {
-        MessageTokenizer mtok = MessageTokenizer(msg);
+        auto mtok = MessageTokenizer(msg);
         auto string = mtok.next_string();
 
         if (string.empty() || !mtok.is_done())
