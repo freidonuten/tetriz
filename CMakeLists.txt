@@ -4,13 +4,22 @@ project(tetriz-server VERSION 1.0.1)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_executable(server
-        src/main.cpp
-        src/Player.cpp src/Player.h
-        src/Server.cpp src/Server.h
-        src/Room.cpp src/Room.h
-        src/Protocol.cpp src/Protocol.h
-        src/MessageTokenizer.cpp src/MessageTokenizer.h
-        src/Response.cpp src/Response.h
-        src/constants.h
-        src/CorruptedRequestException.h src/ProtoUtil.h)
+add_library(objects OBJECT
+    src/Player.cpp
+    src/Server.cpp
+    src/Room.cpp
+    src/Protocol.cpp
+    src/MessageTokenizer.cpp
+    src/Response.cpp
+)
+add_executable(server src/main.cpp $<TARGET_OBJECTS:objects>)
+
+enable_testing()
+find_package(GTest REQUIRED)
+include_directories(src)
+add_executable(tests
+    test/main.cpp
+    test/protocol_serialization.cpp
+)
+target_link_libraries(tests GTest::GTest GTest::Main $<TARGET_OBJECTS:objects>)
+add_test(NAME tests COMMAND tests)
