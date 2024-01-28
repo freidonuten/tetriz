@@ -18,7 +18,6 @@ enable_testing()
 find_package(GTest REQUIRED)
 include_directories(src)
 add_executable(tests
-    test/main.cpp
     test/protocol_serialization.cpp
 )
 target_link_libraries(tests GTest::GTest GTest::Main $<TARGET_OBJECTS:objects>)
