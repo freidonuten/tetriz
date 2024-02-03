@@ -42,7 +42,7 @@ namespace protocol
 
             auto response = Response{};
             auto append_to_response = [&response](const auto& player){
-                response.add_string(player->get_name());
+                response.add(player->get_name());
             };
 
             room->foreach_player(append_to_response);
@@ -56,7 +56,7 @@ namespace protocol
             const auto record_id = [&resp](const auto& room) {
                 if (room->get_delta_t() >= 0)
                 {
-                    resp.add_int(room->get_id());
+                    resp.add(room->get_id());
                 }
             };
 
@@ -70,10 +70,10 @@ namespace protocol
             const auto room = server->get_room_by_id(request.room_id);
 
             return room
-                ? Response()
-                    .add_int(room->get_player_count())
-                    .add_int(room->get_player_limit())
-                    .add_string(room->get_owner()->get_name())
+                ? Response(
+                    room->get_player_count(),
+                    room->get_player_limit(),
+                    room->get_owner()->get_name())
                 : Response::fail;
         }
 
@@ -82,7 +82,7 @@ namespace protocol
             const auto room = server->get_active_room();
 
             return room
-                ? Response().add_int(-room->get_delta_t())
+                ? Response(-room->get_delta_t())
                 : Response::fail;
         }
 
@@ -111,7 +111,7 @@ namespace protocol
             const auto room = server->get_active_room();
 
             return room
-                ? Response().add_int(room->get_seed())
+                ? Response(room->get_seed())
                 : Response::fail;
         }
 
@@ -121,7 +121,7 @@ namespace protocol
 
             return room_id == 0
                 ? Response::fail
-                : Response().add_int(room_id);
+                : Response(room_id);
         }
 
         auto operator()([[maybe_unused]] const room_active_t& request) const -> Response
@@ -129,7 +129,7 @@ namespace protocol
             const auto room = server->get_active_room();
 
             return room
-                ? Response().add_int(room->get_id())
+                ? Response(room->get_id())
                 : Response::fail;
         }
 
@@ -138,7 +138,7 @@ namespace protocol
             const auto room = server->get_active_room();
 
             return room
-                ? Response().add_int(std::max<long>(0L, room->get_delta_t()))
+                ? Response(std::max<long>(0L, room->get_delta_t()))
                 : Response::fail;
         }
             
@@ -177,8 +177,9 @@ namespace protocol
 
             for (int i = request.index; i < max; ++i)
             {
-                response.add_string(room->get_move(player, i));
-                response.add_int(room->get_move_timestamp(player, i));
+                response
+                    .add(room->get_move(player, i))
+                    .add(room->get_move_timestamp(player, i));
             }
 
             return response;
@@ -196,7 +197,7 @@ namespace protocol
             const auto player = server->get_active_player();
             const auto move = room->get_move_count(player) - 1;
 
-            return Response().add_int(room->get_move_timestamp(player, move));
+            return { room->get_move_timestamp(player, move) };
         }
 
     private:
