@@ -1,13 +1,6 @@
 #pragma once
 
-#include "CorruptedRequestException.h"
-#include "MessageTokenizer.h"
 #include "protocol_serialization.hpp"
-#include <cstdint>
-#include <format>
-#include <string>
-#include <variant>
-#include <boost/pfr.hpp>
 
 
 namespace protocol
@@ -16,12 +9,6 @@ namespace protocol
     {
         ANONYMOUS,
         SIGNED
-    };
-
-    template<typename T>
-    concept Message = requires {
-        { T::symbol } -> std::same_as<const char>;
-        { T::state } -> std::same_as<const State>;
     };
 
     inline constexpr struct login_t
@@ -122,7 +109,7 @@ namespace protocol
         constexpr static auto state = State::SIGNED;
     } move_last_timestamp;
 
-    using MessageVariant = std::variant<
+    using message_variant_t = std::variant<
         login_t,
         ping_t,
         player_list_t,
@@ -141,8 +128,8 @@ namespace protocol
     >;
 
     constexpr
-    auto deserialize(std::string_view message) -> MessageVariant
+    auto deserialize(std::string_view message) -> message_variant_t
     {
-        return deserialize<MessageVariant>(message);
+        return deserialize<message_variant_t>(message);
     }
 }

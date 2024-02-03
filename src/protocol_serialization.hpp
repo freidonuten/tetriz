@@ -1,11 +1,13 @@
 #pragma once
 
 #include <boost/pfr/tuple_size.hpp>
-#include <format>
 #include <string_view>
 #include <variant>
+#include <format>
+
 #include "CorruptedRequestException.h"
 #include "MessageTokenizer.h"
+
 
 namespace protocol
 {
@@ -61,6 +63,23 @@ namespace protocol
     }
 
     template <typename T>
+    concept Message = requires {
+        requires std::is_integral_v<decltype(T::symbol)>;
+        requires std::is_enum_v<decltype(T::state)>;
+    };
+
+    template<typename T>
+    struct is_variant_of_messages
+        : std::false_type {};
+
+    template<typename... Ts>
+    struct is_variant_of_messages<std::variant<Ts...>>
+        : std::bool_constant<(... && Message<Ts>)> {};
+
+    template<typename T>
+    concept MessageVariant = is_variant_of_messages<T>::value;
+
+    template <MessageVariant T>
     constexpr
     auto deserialize(std::string_view message) -> T
     {
