@@ -1,16 +1,18 @@
 #include <algorithm>
+#include <variant>
 #include <zconf.h>
 #include <iostream>
 #include "Server.h"
 #include "Player.h"
-#include "Protocol.h"
 #include "CorruptedRequestException.h"
 #include "constants.h"
 #include "Room.h"
+#include "protocol_dispatch.hpp"
+#include "protocol_structs.hpp"
 
 
 Server::Server(int roomLimit)
-    : protocol(new Protocol(this)), roomLimit(roomLimit)
+    : roomLimit(roomLimit)
 { }
 
 auto Server::create_player(const std::string& name) -> bool
@@ -74,7 +76,10 @@ void Server::notify(int fileDescriptor)
     try
     {
         std::cout << "[" << fd << "] Received: " << message;
-        response = protocol->handle(message);
+        response = std::visit(
+            protocol::ProtocolDispatcher(*this),
+            protocol::deserialize(message)
+        ).to_string();
     }
     catch (const SerializerError& e)
     {

@@ -36,7 +36,6 @@ public:
 private:
     mutable std::shared_ptr<Player> active;
 
-    Protocol* protocol;
     std::set<std::shared_ptr<Player>> players;
     std::set<std::shared_ptr<Room>> rooms;
     std::function<void(const int32_t)> close;

@@ -15,19 +15,19 @@ auto Response::add_string(const std::string& value) -> Response&
 
 auto Response::set_fail() -> Response&
 {
-    success = false;
+    status = false;
     return *this;
 }
 
 auto Response::set_success() -> Response&
 {
-    success = true;
+    status = true;
     return *this;
 }
 
 auto Response::to_string() -> std::string
 {
-    auto response = std::string{ success ? MSG_SUCCESS : MSG_FAIL };
+    auto response = std::string{ status ? MSG_SUCCESS : MSG_FAIL };
 
     for (uint32_t integer: integers)
     {

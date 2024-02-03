@@ -8,7 +8,6 @@ add_library(objects OBJECT
     src/Player.cpp
     src/Server.cpp
     src/Room.cpp
-    src/Protocol.cpp
     src/MessageTokenizer.cpp
     src/Response.cpp
 )
