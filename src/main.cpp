@@ -3,16 +3,19 @@
 #include <sys/epoll.h>
 #include <zconf.h>
 #include <fcntl.h>
-#include <memory>
 #include <arpa/inet.h>
+#include <string>
 
 #include "Server.h"
 #include "constants.h"
-#include "CorruptedRequestException.h"
+#include "networking_socket.hpp"
 
 
-auto main(int argc, char* argv[]) -> int {
-    in_addr_t host = INADDR_ANY;
+auto main(int argc, char* argv[]) -> int
+{
+    using namespace std::string_literals;
+
+    auto host = "localhost"s;
     int port = PORT_NO;
     int pLimit = PLAYER_LIMIT;
     int rLimit = ROOM_LIMIT;
@@ -23,7 +26,7 @@ auto main(int argc, char* argv[]) -> int {
             case 5:  rLimit = std::stoi(argv[4]);
             case 4:  pLimit = std::stoi(argv[3]);
             case 3:  port = std::stoi(argv[2]);
-            case 2:  host = inet_addr(argv[1]);
+            case 2:  host = argv[1];
             case 1:  break;
             default: std::cerr << "Err: args not recognized\n";
                 return 9;
@@ -37,81 +40,39 @@ auto main(int argc, char* argv[]) -> int {
         return 10;
     }
 
-    // prepare socket
-    int ssockfd  = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (ssockfd == -1){
-        std::cout << "Socket creation failed.\n";
-        return 1;
-    }
-    fcntl(ssockfd, F_SETFL, O_NONBLOCK);
+    auto server_socket = net::ServerSocket();
+    server_socket.bind(host, port);
+    server_socket.listen();
 
-    // bind and listen
-    struct sockaddr_in server{ AF_INET, htons(port), host };
-    if (bind(ssockfd, (struct sockaddr *) &server, sizeof(server))){
-        std::cerr << "Err: Socket bind failed.\n";
-        return 2;
-    }
-    if (listen(ssockfd, 1) == -1){
-       std::cerr << "Err: Socket listen failed.\n";
-       return 3;
-    }
-    std::cout << "Socket is listening...\n";
+    auto epoll = net::Epoll();
 
-
-    // prepare epoll
-    struct epoll_event events[EPOLL_EVENT_MAX];
-    int epoll_fd = epoll_create1(0);
-    if (epoll_fd == -1){
-        std::cerr << "Err: Epoll create failed.\n";
-        return 4;
-    }
-
-    // prepare Server instance
-    auto serverInstance = std::make_unique<Server>(rLimit);
+    auto server_engine = Server(rLimit);
     int connections = 0;
-    serverInstance->set_close_function([&connections](const int fd){
-        close(fd);
-        --connections;
-    });
+    server_engine.set_close_function(
+        [&connections](const int fd){ close(fd); --connections; }
+    );
 
-    while (true) {
-        // accept clients until exhaustion
-        while (connections < pLimit) {
 
-            struct sockaddr_in client{};
-            socklen_t client_len = sizeof(struct sockaddr_in);
-            int csock_fd = accept(ssockfd, (struct sockaddr *) &client, &client_len);
-            if (csock_fd == -1) {
+    while (true)
+    {
+        while (connections < pLimit)
+        {
+            const auto client_descriptor = server_socket.accept();
+
+            if (client_descriptor == net::invalid_descriptor)
+            {
                 break;
             }
-            std::cout << "Connection accepted\n";
 
-            // create epoll event for accepted client
-            struct epoll_event epoll_e{};
-            epoll_e.events = EPOLLIN;
-            epoll_e.data.fd = csock_fd;
-
-            if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, csock_fd, &epoll_e)) {
-                std::cerr << "Err: Epoll ctl failed\n";
-                close(csock_fd);
-                continue;
-            }
-
+            epoll.add(client_descriptor);
             ++connections;
         }
 
-        // check for events
-        int event_c = epoll_wait(epoll_fd, events, EPOLL_EVENT_MAX, EPOLL_TIMEOUT);
-        if (event_c == -1){
-            continue;
+        for (const auto descriptor : epoll.wait())
+        {
+            server_engine.notify(descriptor);
         }
 
-        // handle events
-        for (int i = 0; i < event_c; ++i) {
-            serverInstance->notify(events[i].data.fd);
-        }
-
-        serverInstance->clean_up_rooms();
-        // fixme clean up inactive players?
+        server_engine.clean_up_rooms();
     }
 }
