@@ -7,6 +7,7 @@
 #include "CorruptedRequestException.h"
 #include "constants.h"
 #include "Room.h"
+#include "networking_socket.hpp"
 #include "protocol_dispatch.hpp"
 #include "protocol_structs.hpp"
 
@@ -26,48 +27,33 @@ auto Server::create_player(const std::string& name) -> bool
 
         // reconnect player
         if (player->is_dead() || player->get_inactivity_ms() > ACTIVE_TIMEOUT_MS){
-            player->connect(fd);
+            player->connect(fd.descriptor());
             return true;
         }
 
         // if player is logged in, just nod him success
-        return player->get_file_descriptor() == fd;
+        return player->get_file_descriptor() == fd.descriptor();
     }
 
     // new player
-    players.insert(std::make_shared<Player>(name, fd));
+    players.insert(std::make_shared<Player>(name, fd.descriptor()));
 
     return true;
 }
 
-void Server::notify(int fileDescriptor)
+void Server::notify(net::Socket<net::socket::client> client)
 {
-    active = nullptr;
-    fd = fileDescriptor;
-    auto message = std::string("");
+    const auto message = client.read();
 
-    // should feed msg until buffer stops overflowing
-    while (true)
+    if (!message.has_value())
     {
-        auto chunk = std::array<char, 17>{0};
-        int result = read(fileDescriptor, chunk.data(), chunk.size());
-        message += chunk.data(); // FIXME read directly into message string
-
-        if (result == 0)
+        if (get_active_player())
         {
-            if (get_active_player())
-            {
-                get_active_player()->disconnect();
-            }
-
-            close(fd);
-            return;
+            get_active_player()->disconnect();
         }
 
-        if (result != chunk.size() || message[message.length() - 1] == MSG_SEP)
-        {
-            break; // did not fill the buffer
-        }
+        client.close();
+        return;
     }
 
     // handle user request
@@ -75,32 +61,33 @@ void Server::notify(int fileDescriptor)
 
     try
     {
-        std::cout << "[" << fd << "] Received: " << message;
+        std::cout << std::format("[{}] Received: {}", client.descriptor(), *message);
+
         response = std::visit(
             protocol::ProtocolDispatcher(*this),
-            protocol::deserialize(message)
+            protocol::deserialize(*message)
         ).to_string();
     }
     catch (const SerializerError& e)
     {
-        std::cout << "[" << fd << "] Corrupted request, closing client socket...\n";
+        std::cout << std::format("[{}] Corrupted request, closing client socket...\n", client.descriptor());
 
         if (get_active_player())
         {
             get_active_player()->logout();
         }
 
-        close(fd);
+        client.close();
     }
 
     // send response
-    std::cout << "[" << fd << "] Sending: " << response;
-    write(fileDescriptor, response.data(), response.length());
+    std::cout << "[" << client.descriptor() << "] Sending: " << response;
+    client.write(response);
 
     // disconnect if login failed
     if (!get_active_player())
     {
-        close(fd);
+        client.close();
     }
 }
 
@@ -123,7 +110,7 @@ void Server::foreach_player(const std::function<void(const std::shared_ptr<Playe
 auto Server::join_room(unsigned room_id) -> bool
 {
     // try to match player with file descriptor
-    auto player = get_player_by_fd(fd);
+    auto player = get_player_by_fd(fd.descriptor());
     if (!player)
     {
         return false;
@@ -142,7 +129,7 @@ auto Server::join_room(unsigned room_id) -> bool
 
 auto Server::create_room(unsigned plimit) -> unsigned
 {
-    auto player = get_player_by_fd(fd);
+    auto player = get_player_by_fd(fd.descriptor());
 
     if (player && roomLimit > rooms.size())
     {
@@ -183,14 +170,14 @@ auto Server::get_player_by_fd(int32_t file_descriptor) const -> std::shared_ptr<
 
 auto Server::get_active_room() const -> std::shared_ptr<Room>
 {
-    auto player = get_player_by_fd(fd);
+    auto player = get_player_by_fd(fd.descriptor());
     return player ? player->get_room().lock() : nullptr;
 }
 
 auto Server::get_active_player() const -> std::shared_ptr<Player>
 {
     return !active
-        ? (active = get_player_by_fd(fd))
+        ? (active = get_player_by_fd(fd.descriptor()))
         : active;
 }
 
@@ -228,10 +215,35 @@ void Server::clean_up_rooms()
 
 void Server::close_active()
 {
-    close(fd);
+    fd.close();
+    connections--;
 }
 
-void Server::set_close_function(std::function<void(const int)> closeFunc)
+void Server::start(std::string_view host, int port)
 {
-    close = std::move(closeFunc);
+    auto epoll = net::Epoll();
+    auto socket = net::ServerSocket();
+    socket.bind(host, port);
+    socket.listen();
+
+    while (true)
+    {
+        while (connections < connection_limit)
+        {
+            if (const auto client = socket.accept())
+            {
+                epoll.add(client.descriptor());
+                continue;
+            }
+
+            break;
+        }
+
+        for (const auto descriptor : epoll.wait())
+        {
+            notify(descriptor);
+        }
+
+        clean_up_rooms();
+    }
 }
