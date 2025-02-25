@@ -1,8 +1,9 @@
 #pragma once
 
+#include "logger.hpp"
+#include <cstdint>
 #include <vector>
 #include <string>
-#include <memory>
 
 
 class Response
@@ -47,8 +48,18 @@ public:
         {
             add_string(std::forward<T>(value));
         }
+        else
+        {
+            log_warning("Failed to add data to response");
+        }
 
         return *this;
+    }
+
+    template <typename ...Args>
+    auto add(Args&& ...args) -> Response&
+    {
+        return (add(std::forward<Args>(args)), ...);
     }
 
     static constexpr auto fail = Status::FAIL;

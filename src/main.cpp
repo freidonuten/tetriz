@@ -1,4 +1,3 @@
-#include <iostream>
 #include <netinet/in.h>
 #include <sys/epoll.h>
 #include <zconf.h>
@@ -8,37 +7,39 @@
 
 #include "Server.h"
 #include "constants.h"
-#include "networking_socket.hpp"
+#include "logger.hpp"
 
 
-auto main(int argc, char* argv[]) -> int
+auto main(int argc, char** argv) -> int
 {
     using namespace std::string_literals;
 
     auto host = "127.0.0.1"s;
-    int port = PORT_NO;
-    int pLimit = PLAYER_LIMIT;
-    int rLimit = ROOM_LIMIT;
+    auto port = PORT_NO;
 
-    // parse args
     try {
         switch (argc) {
-            case 5:  rLimit = std::stoi(argv[4]);
-            case 4:  pLimit = std::stoi(argv[3]);
             case 3:  port = std::stoi(argv[2]);
+                     [[fallthrough]];
             case 2:  host = argv[1];
+                     [[fallthrough]];
             case 1:  break;
-            default: std::cerr << "Err: args not recognized\n";
+            default:
+                log_error("args not recognized");
                 return 9;
         }
         if (!port || port > 65535) {
-            std::cerr << "Invalid port\n";
+            log_error("Invalid port");
             return 10;
         }
     } catch (std::exception& e) {
-        std::cerr << "Err: failed to parse arguments\n";
+        log_error("Err: failed to parse arguments");
         return 10;
     }
 
-    Server(rLimit).start(host, port);
+    auto server = Server{};
+
+    server.start(host, port);
+
+    return 0;
 }

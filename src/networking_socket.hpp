@@ -3,6 +3,7 @@
 
 #include "constants.h"
 #include "crtp.hpp"
+
 #include <format>
 #include <ranges>
 #include <cstdint>
@@ -17,6 +18,7 @@
 #include <fcntl.h>
 #include <string>
 #include <unistd.h>
+#include <generator>
 
 
 namespace net
@@ -33,9 +35,20 @@ namespace net
     class epoll_create_error : public epoll_error { using epoll_error::epoll_error; };
     class epoll_add_error : public epoll_error { using epoll_error::epoll_error; };
 
+    // Forward declaration needed for friending, see below
+    namespace socket { template <typename Host> class auto_closeable; }
+
     template <template <typename> typename ...Features>
     class Socket : public Features<Socket<Features>>...
     {
+        // since C++26 it will be possible to just befriend the whole pack like this:
+        //     friend class Freatures<Socket<Features>>...
+        // 
+        // For now I'll just explicitly friend the feature which needs private access
+        // which breaks the genericity but at least gets the job done without breaking
+        // encapsulation.
+        friend class socket::auto_closeable<Socket<Features...>>;
+
     public:
         Socket(int32_t descriptor)
             : descriptor_(descriptor)
@@ -123,7 +136,7 @@ namespace net
                 auto host = in_addr_t{ inet_addr(address.data()) };
                 auto server = sockaddr_in{ AF_INET, htons(port), host };
 
-                if (::connect(this->fd(), reinterpret_cast<sockaddr*>(&server), sizeof(server)) != 0)
+                if (::connect(this->fd(), std::bit_cast<sockaddr*>(&server), sizeof(server)) != 0)
                 {
                     throw socket_connect_error(std::format("Failed to connect to {}:{}", address, port));
                 }
@@ -139,26 +152,36 @@ namespace net
                 auto host = in_addr_t{ inet_addr(address.data()) };
                 auto server = sockaddr_in{ AF_INET, htons(port), host };
 
-                if (::bind(this->fd(), reinterpret_cast<sockaddr*>(&server), sizeof(server)) != 0)
+                if (const auto err = ::bind(this->fd(), reinterpret_cast<sockaddr*>(&server), sizeof(server)); err != 0)
                 {
-                    throw socket_bind_error(std::format("failed to bind to {}:{}", address, port));
+                    throw socket_bind_error(std::format("failed to bind to {}:{}: {}", address, port, strerror(err)));
                 }
             }
 
             void listen()
             {
-                if (::listen(this->fd(), 100) == -1)
+                static constexpr auto queue_size = 100;
+
+                if (::listen(this->fd(), queue_size) == -1)
                 {
                     throw socket_listen_error(std::format("listend failed on descriptor {}", this->fd()));
                 }
             }
 
             [[nodiscard]]
-            auto accept() -> Socket<client>
+            auto accept() -> std::generator<uint32_t>
             {
                 struct sockaddr_in client{};
                 socklen_t client_len = sizeof(struct sockaddr_in);
-                return ::accept(this->fd(), (struct sockaddr *) &client, &client_len);
+
+                while (true)
+                {
+                    auto fd = ::accept(this->fd(), std::bit_cast<struct sockaddr *>(&client), &client_len);
+                    if (fd == invalid_descriptor)
+                        break;
+
+                    co_yield fd;
+                }
             }
         };
 
@@ -197,7 +220,7 @@ namespace net
         {
             if (descriptor_ == invalid_descriptor)
             {
-                throw epoll_create_error(std::format("Failed to create epoll instance"));
+                throw epoll_create_error("Failed to create epoll instance");
             }
         }
 

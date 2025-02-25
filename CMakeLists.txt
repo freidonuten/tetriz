@@ -1,17 +1,18 @@
 cmake_minimum_required(VERSION 3.10)
 project(tetriz-server VERSION 1.0.1)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_library(objects OBJECT
-    src/Player.cpp
     src/Server.cpp
-    src/Room.cpp
     src/MessageTokenizer.cpp
     src/Response.cpp
+    src/protocol_dispatch.cpp
 )
+
 add_executable(server src/main.cpp $<TARGET_OBJECTS:objects>)
+add_compile_options(-Wall -Wextra -Wpedantic)
 
 enable_testing()
 find_package(GTest REQUIRED)

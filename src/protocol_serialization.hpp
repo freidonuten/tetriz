@@ -2,6 +2,7 @@
 
 #include <boost/pfr/tuple_size.hpp>
 #include <string_view>
+#include <type_traits>
 #include <variant>
 #include <format>
 
