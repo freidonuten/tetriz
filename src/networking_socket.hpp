@@ -165,10 +165,22 @@ namespace net
         template <typename Host>
         struct auto_closeable : public detail::socket_policy<Host>
         {
-            ~auto_closeable()
+            auto_closeable() = default;
+            auto_closeable(const auto_closeable&) = delete;
+            auto_closeable(auto_closeable&& other) noexcept
             {
-                this->self().close();
+                this->self().descriptor_ = other.self().descriptor_;
+                other.self().descriptor_ = invalid_descriptor;
             }
+
+            auto operator=(const auto_closeable&) -> auto_closeable& = delete;
+            auto operator=(auto_closeable&& other) noexcept -> auto_closeable&
+            {
+                new (this) Host(other);
+                return *this;
+            }
+
+            ~auto_closeable() { this->self().close(); }
         };
     }
 
