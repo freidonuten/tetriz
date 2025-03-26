@@ -3,42 +3,30 @@
 #include <iostream>
 #include <ostream>
 
+#include "magic_enum/magic_enum.hpp"
+
+
 enum class Severity
 {
-    Error,
+    Error = 1,
     Warning,
     Info,
     Debug,
     Trace
 };
 
-inline constexpr auto log_level = Severity::Info;
+inline auto log_level = Severity::Info;
 
 namespace detail
 {
-    consteval auto to_string(Severity severity) -> std::string_view
-    {
-        using enum Severity;
-
-        switch (severity)
-        {
-            case Error: return "Err";
-            case Warning: return "Wrn";
-            case Info: return "Inf";
-            case Debug: return "Dbg";
-            case Trace: return "Trc";
-        }
-
-        return "???";
-    }
-
     template <Severity S, typename ...Args>
     void log(std::ostream& outstream, std::format_string<Args...> format, Args&& ...args)
     {
-        if constexpr (static_cast<int>(log_level) <= static_cast<int>(S))
+        if (static_cast<int>(S) <= static_cast<int>(log_level))
         {
-            std::print(outstream, "[{}]: ", to_string(S));
+            std::print(outstream, "[{}]: ", magic_enum::enum_name<S>().substr(0, 3));
             std::println(outstream, format, std::forward<Args>(args)...);
+            std::flush(outstream);
         }
     }
 }
