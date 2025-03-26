@@ -16,7 +16,9 @@ find_package(GTest REQUIRED)
 find_package(ftxui 5 REQUIRED)
 
 add_executable(server src/main.cpp $<TARGET_OBJECTS:libserver>)
+add_executable(server_ng src/server/main.cpp $<TARGET_OBJECTS:libserver>)
 add_executable(game_sp src/game/game_sp.cpp)
+add_executable(game_mp src/game/game_mp.cpp)
 add_executable(tests test/protocol_serialization.cpp)
 
 add_compile_options(-Wall -Wextra -Wpedantic)
@@ -25,6 +27,11 @@ include_directories(src)
 include_directories(lib)
 
 target_link_libraries(tests GTest::GTest GTest::Main $<TARGET_OBJECTS:libserver>)
+target_link_libraries(game_mp
+    PRIVATE ftxui::screen
+    PRIVATE ftxui::dom
+    PRIVATE ftxui::component
+)
 target_link_libraries(game_sp
     PRIVATE ftxui::screen
     PRIVATE ftxui::dom
