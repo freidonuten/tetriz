@@ -61,7 +61,7 @@ namespace net
         { }
 
         [[nodiscard]]
-        auto read() -> std::optional<std::string>
+        auto read_str() -> std::optional<std::string>
         {
             constexpr auto chunk_size = 32ul;
             constexpr auto size_limit = 1024ul;

@@ -17,6 +17,7 @@ add_compile_options(-Wall -Wextra -Wpedantic)
 enable_testing()
 find_package(GTest REQUIRED)
 include_directories(src)
+include_directories(lib)
 add_executable(tests
     test/protocol_serialization.cpp
 )
