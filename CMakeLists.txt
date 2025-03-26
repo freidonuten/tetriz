@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_library(objects OBJECT
+    src/epoll.cpp
     src/Server.cpp
     src/MessageTokenizer.cpp
     src/Response.cpp
