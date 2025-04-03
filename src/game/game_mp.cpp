@@ -4,6 +4,7 @@
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/event.hpp>
 
+#include "argparse/argparse.hpp"
 #include "game/renderer.hpp"
 #include "networking_socket.hpp"
 #include "proto/protocol.hpp"
@@ -12,12 +13,41 @@ using namespace ftxui;
 using namespace std::chrono_literals;
 using namespace tetriz::proto;
 
+struct Configuration
+{
+    std::string host;
+    uint16_t port;
+};
+
+auto parse(int argc, char** argv)
+{
+    auto program = argparse::ArgumentParser("tetriz", "0.0.0");
+    auto configuration = Configuration{};
+
+    program.add_argument("host")
+        .help("ipv4 address to bind")
+        .metavar("ADDRESS")
+        .default_value("127.0.0.1")
+        .store_into(configuration.host);
+
+    program.add_argument("port")
+        .help("port number to bind")
+        .metavar("PORT")
+        .default_value<uint16_t>(4444)
+        .scan<'i', uint16_t>()
+        .store_into(configuration.port);
+
+    program.parse_args(argc, argv);
+
+    return configuration;
+}
 
 auto main(int argc, char** argv) -> int
 {
+    const auto config = parse(argc, argv);
     auto sock = net::ClientSocket();
     sock.set_nodelay();
-    sock.connect("127.0.0.1", 6666);
+    sock.connect(config.host, config.port);
 
     const auto timeout = timeval{
         .tv_sec = 0,
