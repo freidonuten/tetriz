@@ -17,8 +17,6 @@ add_library(libserver OBJECT
 
 add_subdirectory(src/game)
 
-find_package(GTest REQUIRED)
-
 add_executable(server src/main.cpp $<TARGET_OBJECTS:libserver>)
 add_executable(server_ng src/server/main.cpp $<TARGET_OBJECTS:libserver>)
 add_executable(tests test/protocol_serialization.cpp)
@@ -28,7 +26,18 @@ add_compile_options(-Wall -Wextra -Wpedantic)
 include_directories(src)
 include_directories(lib)
 
-target_link_libraries(tests GTest::GTest GTest::Main $<TARGET_OBJECTS:libserver>)
+include(FetchContent)
+
+FetchContent_Declare(
+    googletest
+    GIT_REPOSITORY "https://github.com/google/googletest"
+    GIT_TAG        v1.16.0
+)
+
+FetchContent_MakeAvailable(googletest)
 
 enable_testing()
+
+target_link_libraries(tests GTest::gtest_main $<TARGET_OBJECTS:libserver>)
+
 add_test(NAME tests COMMAND tests)
