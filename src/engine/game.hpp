@@ -92,7 +92,7 @@ namespace tetriz
         }
 
         constexpr auto finished() const -> bool { return finished_; }
-        constexpr auto board() const -> Board { return board_; }
+        constexpr auto board() const -> const Board& { return board_; }
         constexpr auto current() const -> Tetromino { return current_; }
         constexpr auto score() const -> uint16_t { return score_; }
         constexpr auto bag() const -> const TetrominoBag& { return bag_; }
