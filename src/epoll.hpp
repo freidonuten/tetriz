@@ -3,11 +3,14 @@
 #include <array>
 #include <cstdint>
 #include <optional>
+
 #include <sys/epoll.h>
 
-#include "constants.h"
 #include "networking_socket.hpp"
 
+
+constexpr auto EPOLL_EVENT_MAX = 16;
+constexpr auto EPOLL_TIMEOUT = 100;
 
 class Epoll
 {
@@ -21,7 +24,6 @@ public:
     Epoll& operator=(Epoll&& other) { std::swap(descriptor_, other.descriptor_); return *this; }
 
     bool add(int32_t observed_fd);
-    //bool add(const auto& resource) { return resource.descriptor(); }
 
     [[nodiscard]] auto descriptor() const -> int32_t;
     [[nodiscard]] auto wait() -> decltype(auto)
