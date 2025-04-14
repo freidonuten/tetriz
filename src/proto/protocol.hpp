@@ -7,9 +7,8 @@
 #include "engine/game.hpp"
 #include "engine/game_board.hpp"
 
-#include "logger.hpp"
 #include "proto/serializers.hpp"
-#include "util/functional.hpp"
+#include "util/time.hpp"
 
 
 namespace tetriz::proto
@@ -17,7 +16,9 @@ namespace tetriz::proto
     enum class MessageType : uint8_t
     {
         Move,
-        Sync,
+        Game,
+        Time,
+        Hola,
     };
 
     enum class Move : uint8_t
@@ -35,19 +36,31 @@ namespace tetriz::proto
         Move move{};
     };
 
-    struct DatagramSync
+    using Bag = std::array<TetrominoShape, 4>;
+
+    struct DatagramGame
     {
         Board board{};
         Tetromino current{};
         TetrominoShape swap = TetrominoShape::T;
-        std::array<TetrominoShape, 4> bag{
-            TetrominoShape::T, TetrominoShape::T, TetrominoShape::T, TetrominoShape::T
-        };
-        std::chrono::duration<uint32_t, std::milli> timestamp{};
+        Bag bag{TetrominoShape::T, TetrominoShape::T, TetrominoShape::T, TetrominoShape::T};
         uint16_t score{};
     };
 
-    using Payload = std::variant<std::monostate, DatagramMove, DatagramSync>;
+    struct DatagramTime
+    {
+        Duration timestamp;
+    };
+
+    struct DatagramHola {};
+
+    using Payload = std::variant<
+        std::monostate,
+        DatagramMove,
+        DatagramGame,
+        DatagramTime,
+        DatagramHola
+    >;
 
     struct Datagram
     {
@@ -55,28 +68,37 @@ namespace tetriz::proto
         Payload payload{};
     };
 
-    constexpr auto deserialize(const std::vector<uint8_t>& vec)
-        -> std::optional<Datagram>
+    constexpr auto deserialize(std::span<const uint8_t> message) -> std::optional<Datagram>
     {
-        auto payload = std::span<const uint8_t>(vec);
-        switch (pop_from<MessageType>(payload))
+        switch (pop_from<MessageType>(message))
         {
             case MessageType::Move:
                 return Datagram{
                     .type = MessageType::Move,
-                    .payload = pop_from<DatagramMove>(payload)
+                    .payload = pop_from<DatagramMove>(message)
                 };
-            case MessageType::Sync:
+            case MessageType::Game:
                 return Datagram{
-                    .type = MessageType::Sync,
-                    .payload = DatagramSync{
-                        .board = pop_from<Board>(payload),
-                        .current = pop_from<Tetromino>(payload),
-                        .swap = pop_from<TetrominoShape>(payload),
-                        .bag = pop_from<std::array<TetrominoShape, 4>>(payload),
-                        .timestamp = pop_from<const decltype(DatagramSync::timestamp)>(payload),
-                        .score = pop_from<uint16_t>(payload)
+                    .type = MessageType::Game,
+                    .payload = DatagramGame{
+                        .board = pop_from<Board>(message),
+                        .current = pop_from<Tetromino>(message),
+                        .swap = pop_from<TetrominoShape>(message),
+                        .bag = pop_from<Bag>(message),
+                        .score = pop_from<uint16_t>(message)
                     }
+                };
+            case MessageType::Time:
+                return Datagram{
+                    .type = MessageType::Time,
+                    .payload = DatagramTime{
+                        .timestamp = pop_from<Duration>(message)
+                    }
+                };
+            case MessageType::Hola:
+                return Datagram{
+                    .type = MessageType::Hola,
+                    .payload = DatagramHola{}
                 };
             default:
                 return std::nullopt;
@@ -88,16 +110,25 @@ namespace tetriz::proto
         return serialize(MessageType::Move, move);
     }
 
-    constexpr auto serialize_sync(decltype(DatagramSync::timestamp) timestamp, const Game& game)
+    constexpr auto serialize_game(const Game& game)
     {
         return serialize(
-            MessageType::Sync,
+            MessageType::Game,
             game.board(),
             game.current(),
             game.swapped().value_or(TetrominoShape::I),
-            game.bag().peek<sizeof(DatagramSync::bag)>(),
-            timestamp.count(),
+            game.bag().peek<sizeof(DatagramGame::bag)>(),
             game.score()
         );
+    }
+
+    constexpr auto serialize_time(Duration timestamp)
+    {
+        return serialize(MessageType::Time, timestamp);
+    }
+
+    constexpr auto serialize_hola()
+    {
+        return serialize(MessageType::Hola);
     }
 }

@@ -13,8 +13,8 @@ using namespace std::chrono_literals;
 
 auto main(int argc, char** argv) -> int
 {
-    const auto time = [start_time = std::chrono::high_resolution_clock::now()]{
-        return std::chrono::duration_cast<std::chrono::milliseconds>(
+    const auto time = [start_time = Clock::now()]{
+        return std::chrono::duration_cast<Duration>(
             std::chrono::high_resolution_clock::now() - start_time);
     };
 
