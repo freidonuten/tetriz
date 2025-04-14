@@ -101,7 +101,7 @@ namespace net
                 : std::optional(message);
         }
 
-        void write(auto payload)
+        void write(std::span<const uint8_t> payload) const
         {
             if (payload.size() != ::write(descriptor_, payload.data(), payload.size()))
             {
@@ -128,6 +128,9 @@ namespace net
         [[nodiscard]] constexpr
         explicit operator bool() const
         { return is_valid(); }
+
+        auto operator<=>(const Socket& other) const
+        { return descriptor_ <=> other.descriptor_; }
 
     private:
         int32_t descriptor_ = invalid_descriptor;

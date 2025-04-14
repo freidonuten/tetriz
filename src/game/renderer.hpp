@@ -104,9 +104,9 @@ constexpr auto render(uint64_t score)
     return text(std::to_string(score)) | align_right | bold;
 }
 
-constexpr auto render(std::chrono::duration<uint32_t, std::milli> time)
+constexpr auto render(Duration timestamp)
 {
-    return text(std::format("{:%M:%S}", time)) | center;
+    return text(std::format("{:%M:%S}", timestamp)) | center;
 }
 
 constexpr auto compose(const auto& board, const auto& bag, const auto& swap, const auto& score, const auto& time)
@@ -142,15 +142,15 @@ auto make_board_renderer(const tetriz::Game& game, const auto& time_source)
 }
 
 inline
-auto make_board_renderer(const tetriz::proto::DatagramSync& sync)
+auto make_board_renderer(const tetriz::proto::DatagramGame& game, const tetriz::proto::DatagramTime& time)
 {
     return Renderer([&] {
-        const auto board = render(sync.board, sync.current);
-        const auto bag = render(sync.bag);
-        const auto swap = render(sync.swap);
-        const auto score = render(sync.score);
-        const auto time = render(sync.timestamp);
+        const auto board = render(game.board, game.current);
+        const auto bag = render(game.bag);
+        const auto swap = render(game.swap);
+        const auto score = render(game.score);
+        const auto timestamp = render(time.timestamp);
 
-        return compose(board, bag, swap, score, time);
+        return compose(board, bag, swap, score, timestamp);
     });
 }
