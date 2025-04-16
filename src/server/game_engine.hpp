@@ -2,7 +2,6 @@
 
 #include "engine/game.hpp"
 #include "proto/protocol.hpp"
-#include "networking_socket.hpp"
 
 
 using namespace std::chrono_literals;
@@ -15,6 +14,8 @@ public:
     {
         using tetriz::proto::Move;
         using tetriz::Direction;
+
+        log_trace("Move: {}", magic_enum::enum_name(move));
 
         [this, move] {
             switch (move)
@@ -34,9 +35,10 @@ public:
         game_.tick();
     }
 
-    auto game() const
-        -> const tetriz::Game&
-    { return game_; }
+    auto game() const -> const tetriz::Game&
+    {
+        return game_;
+    }
 
 private:
     tetriz::Game game_;

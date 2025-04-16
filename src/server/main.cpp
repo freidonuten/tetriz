@@ -1,10 +1,8 @@
 #include <csignal>
-#include <map>
 
 #include "logger.hpp"
 #include "epoll.hpp"
 
-#include "game_engine.hpp"
 #include "server/room.hpp"
 
 
@@ -15,35 +13,19 @@ void signal_handler(int signal)
     run = false;
 }
 
-std::map<int32_t, GameEngine> games;
-Room room;
-
+Room room(3);
 
 void notify(net::ConnectionWrapper client)
 {
-    log_info("Received...");
-
     if (const auto payload = client.read(); payload)
-    {
-        if (!games.contains(client.descriptor()))
-        {
-            log_info("Opening...");
-            room.add_player(client);
-        }
-
-        log_info("Notifying...");
         room.notify(client, *payload);
-    }
     else
-    {
-        log_info("Closing...");
-        games.erase(client.descriptor());
-        client.close();
-    }
+        room.leave(client);
 }
 
 auto main(int argc, char** argv) -> int
 {
+    log_level = Severity::Trace;
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
 
