@@ -40,6 +40,7 @@ namespace tetriz::proto
 
     struct DatagramGame
     {
+        uint8_t player_id{};
         Board board{};
         Tetromino current{};
         TetrominoShape swap = TetrominoShape::T;
@@ -81,6 +82,7 @@ namespace tetriz::proto
                 return Datagram{
                     .type = MessageType::Game,
                     .payload = DatagramGame{
+                        .player_id = pop_from<uint8_t>(message),
                         .board = pop_from<Board>(message),
                         .current = pop_from<Tetromino>(message),
                         .swap = pop_from<TetrominoShape>(message),
@@ -110,10 +112,11 @@ namespace tetriz::proto
         return serialize(MessageType::Move, move);
     }
 
-    constexpr auto serialize_game(const Game& game)
+    constexpr auto serialize_game(uint8_t player_id, const Game& game)
     {
         return serialize(
             MessageType::Game,
+            player_id,
             game.board(),
             game.current(),
             game.swapped().value_or(TetrominoShape::I),

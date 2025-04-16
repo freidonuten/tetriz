@@ -24,7 +24,7 @@ public:
         games_.emplace(
                 std::piecewise_construct,
                 std::forward_as_tuple(player),
-                std::forward_as_tuple(player));
+                std::forward_as_tuple());
 
         if (games_.size() == 2)
             start();
@@ -40,7 +40,6 @@ public:
             return;
         }
 
-
         const auto msg = tetriz::proto::deserialize(message);
 
         if (!msg)
@@ -55,6 +54,7 @@ public:
                 .at(player.descriptor())
                 .action(std::get<tetriz::proto::DatagramMove>(msg->payload).move);
 
+            notify_move(player);
             return;
         }
 
@@ -88,7 +88,38 @@ private:
                         tetriz::proto::serialize_time(
                             std::chrono::duration_cast<Duration>(Clock::now() - start_time_)));
                 });
+
+                notify_tick();
             }
         });
+    }
+
+    void notify_move(net::ConnectionWrapper originator_sock)
+    {
+        const auto& originator_game = games_.at(originator_sock).game();
+
+        auto id = uint16_t{0};
+        for (const auto& another_sock : games_ | std::views::keys)
+        {
+            if (originator_sock.descriptor() == another_sock.descriptor())
+                another_sock.write(tetriz::proto::serialize_game(0, originator_game));
+            else
+                another_sock.write(tetriz::proto::serialize_game(++id, originator_game));
+        }
+    }
+
+    void notify_tick()
+    {
+        for (const auto& current_sock : games_ | std::views::keys)
+        {
+            auto id = uint16_t{0};
+            for (const auto& [another_sock, engine] : games_)
+            {
+                if (current_sock.descriptor() == another_sock.descriptor())
+                    current_sock.write(tetriz::proto::serialize_game(0, engine.game()));
+                else
+                    current_sock.write(tetriz::proto::serialize_game(++id, engine.game()));
+            }
+        }
     }
 };

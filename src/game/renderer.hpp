@@ -144,13 +144,22 @@ auto make_board_renderer(const tetriz::Game& game, const auto& time_source)
 inline
 auto make_board_renderer(const tetriz::proto::DatagramGame& game, const tetriz::proto::DatagramTime& time)
 {
-    return Renderer([&] {
-        const auto board = render(game.board, game.current);
-        const auto bag = render(game.bag);
-        const auto swap = render(game.swap);
-        const auto score = render(game.score);
-        const auto timestamp = render(time.timestamp);
+    const auto board = render(game.board, game.current);
+    const auto bag = render(game.bag);
+    const auto swap = render(game.swap);
+    const auto score = render(game.score);
+    const auto timestamp = render(time.timestamp);
 
-        return compose(board, bag, swap, score, timestamp);
+    return compose(board, bag, swap, score, timestamp);
+}
+
+inline
+auto make_boards_renderer(const std::array<tetriz::proto::DatagramGame, 2>& games, const tetriz::proto::DatagramTime& time)
+{
+    return Renderer([&] {
+        return hbox(
+            make_board_renderer(games[0], time),
+            make_board_renderer(games[1], time)
+        );
     });
 }

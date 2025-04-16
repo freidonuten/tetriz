@@ -11,19 +11,10 @@ using namespace std::chrono_literals;
 class GameEngine
 {
 public:
-    GameEngine(net::ConnectionWrapper client)
-        : client_(client)
-    {}
-
-    GameEngine(const GameEngine&) = default;
-    GameEngine(GameEngine&& other) = default;
-
     void action(tetriz::proto::Move move)
     {
         using tetriz::proto::Move;
         using tetriz::Direction;
-
-        log_info("Received action: {}", magic_enum::enum_name(move));
 
         [this, move] {
             switch (move)
@@ -36,22 +27,17 @@ public:
                 case Move::Swap:   return game_.swap();
             }
         }();
-
-        update_client();
     }
 
     void tick()
     {
         game_.tick();
-        update_client();
     }
+
+    auto game() const
+        -> const tetriz::Game&
+    { return game_; }
 
 private:
     tetriz::Game game_;
-    net::ConnectionWrapper client_;
-
-    void update_client()
-    {
-        client_.write(tetriz::proto::serialize_game(game_));
-    }
 };
