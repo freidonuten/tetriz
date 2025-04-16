@@ -3,6 +3,7 @@
 #include <map>
 #include <thread>
 
+#include "networking_socket.hpp"
 #include "server/game_engine.hpp"
 #include "util/encoding.hpp"
 #include "util/time.hpp"
@@ -12,56 +13,70 @@
 class Room
 {
 public:
-    Room() = default;
+    Room(uint32_t room_size)
+        : room_size_(room_size)
+    {}
 
     ~Room()
     {
         worker_.join();
     }
 
-    void add_player(net::ConnectionWrapper player)
+    void notify(net::ConnectionWrapper client, std::span<const uint8_t> message)
     {
-        games_.emplace(
-                std::piecewise_construct,
-                std::forward_as_tuple(player),
-                std::forward_as_tuple());
-
-        if (games_.size() == 2)
-            start();
-    }
-
-    void notify(net::ConnectionWrapper player, std::span<const uint8_t> message)
-    {
-        log_info("Received: {}", hexdump(message));
-
-        if (start_time_ > Clock::now())
-        {
-            log_trace("Won't notify, game has not started yet");
-            return;
-        }
+        log_trace("Received: {}", hexdump(message));
 
         const auto msg = tetriz::proto::deserialize(message);
 
         if (!msg)
         {
-            log_warning("Invalid message!");
+            log_debug("Invalid message!");
+            return;
+        }
+
+        if (!games_.contains(client))
+        {
+            if (msg->type == tetriz::proto::MessageType::Hola)
+            {
+                log_debug("Player joined");
+                add_player(client);
+            }
+            else
+            {
+                log_debug("Expected Hola");
+                client.close();
+            }
+
             return;
         }
 
         if (msg->type == tetriz::proto::MessageType::Move)
         {
+            if (start_time_ > Clock::now())
+            {
+                log_trace("Won't notify, game has not started yet");
+                return;
+            }
+
             games_
-                .at(player.descriptor())
+                .at(client.descriptor())
                 .action(std::get<tetriz::proto::DatagramMove>(msg->payload).move);
 
-            notify_move(player);
+            notify_move(client);
             return;
         }
 
         log_info("Received unexpected message type!");
     }
 
+    void leave(net::ConnectionWrapper client)
+    {
+        games_.erase(client);
+        client.close();
+    }
+
 private:
+    int32_t room_size_ = 0;
     std::map<net::ConnectionWrapper, GameEngine> games_;
     std::jthread worker_ = {};
     std::atomic<bool> run_ = true;
@@ -92,6 +107,17 @@ private:
                 notify_tick();
             }
         });
+    }
+
+    void add_player(net::ConnectionWrapper player)
+    {
+        games_.emplace(
+                std::piecewise_construct,
+                std::forward_as_tuple(player),
+                std::forward_as_tuple());
+
+        if (games_.size() == room_size_)
+            start();
     }
 
     void notify_move(net::ConnectionWrapper originator_sock)

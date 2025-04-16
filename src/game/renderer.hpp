@@ -109,7 +109,7 @@ constexpr auto render(Duration timestamp)
     return text(std::format("{:%M:%S}", timestamp)) | center;
 }
 
-constexpr auto compose(const auto& board, const auto& bag, const auto& swap, const auto& score, const auto& time)
+constexpr auto compose(const auto& board, const auto& bag, const auto& swap, const auto& score, const auto& time) -> Element
 {
     constexpr auto side_panel_width = 10;
     return hflow(
@@ -128,7 +128,7 @@ constexpr auto compose(const auto& board, const auto& bag, const auto& swap, con
 }
 
 inline
-auto make_board_renderer(const tetriz::Game& game, const auto& time_source)
+auto make_board_renderer(const tetriz::Game& game, const auto& time_source) -> Component
 {
     return Renderer([&] {
         const auto board = render(game.board(), game.current());
@@ -142,7 +142,7 @@ auto make_board_renderer(const tetriz::Game& game, const auto& time_source)
 }
 
 inline
-auto make_board_renderer(const tetriz::proto::DatagramGame& game, const tetriz::proto::DatagramTime& time)
+auto make_board_renderer(const tetriz::proto::DatagramGame& game, const tetriz::proto::DatagramTime& time) -> Element
 {
     const auto board = render(game.board, game.current);
     const auto bag = render(game.bag);
@@ -154,12 +154,11 @@ auto make_board_renderer(const tetriz::proto::DatagramGame& game, const tetriz::
 }
 
 inline
-auto make_boards_renderer(const std::array<tetriz::proto::DatagramGame, 2>& games, const tetriz::proto::DatagramTime& time)
+auto make_boards_renderer(std::span<const tetriz::proto::DatagramGame> games, const tetriz::proto::DatagramTime& time) -> Component
 {
-    return Renderer([&] {
-        return hbox(
-            make_board_renderer(games[0], time),
-            make_board_renderer(games[1], time)
-        );
+    return Renderer([games, &time] {
+        return ftxui::hbox(games
+                | std::views::transform([&time](const auto& game) { return make_board_renderer(game, time); })
+                | std::ranges::to<std::vector>());
     });
 }

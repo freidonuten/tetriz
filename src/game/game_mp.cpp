@@ -58,7 +58,7 @@ auto main(int argc, char** argv) -> int
 
     setsockopt(sock.descriptor(), SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
-    auto games = std::array<tetriz::proto::DatagramGame, 2>{};
+    auto games = std::array<tetriz::proto::DatagramGame, 3>{};
     auto time = tetriz::proto::DatagramTime{};
     auto game_renderer = make_boards_renderer(games, time);
 

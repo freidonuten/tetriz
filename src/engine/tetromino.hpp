@@ -10,7 +10,7 @@ namespace tetriz
     struct Tetromino
     {
         TetrominoShape shape = TetrominoShape::T;
-        TetrominoRotation rotation;
-        TetrominoCoordinates coordinates;
+        TetrominoRotation rotation = TetrominoRotation::Base;
+        TetrominoCoordinates coordinates{};
     };
 }
