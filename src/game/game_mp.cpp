@@ -58,9 +58,9 @@ auto main(int argc, char** argv) -> int
 
     setsockopt(sock.descriptor(), SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
-    auto game = tetriz::proto::DatagramGame{};
+    auto games = std::array<tetriz::proto::DatagramGame, 2>{};
     auto time = tetriz::proto::DatagramTime{};
-    auto game_renderer = make_board_renderer(game, time);
+    auto game_renderer = make_boards_renderer(games, time);
 
     auto event_listener = CatchEvent(game_renderer, [&](const Event& e) {
         using tetriz::proto::Move;
@@ -107,8 +107,9 @@ auto main(int argc, char** argv) -> int
                         break;
                     else if (msg->type == MessageType::Game)
                     {
-                        game = std::get<DatagramGame>(msg->payload);
-                        processable = processable.subspan(sizeof(decltype(serialize_game({}))));
+                        const auto game = std::get<DatagramGame>(msg->payload);
+                        games[game.player_id] = game;
+                        processable = processable.subspan(sizeof(decltype(serialize_game(0, {}))));
                     }
                     else if (msg->type == MessageType::Time)
                     {
