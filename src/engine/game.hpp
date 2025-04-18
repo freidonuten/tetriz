@@ -156,7 +156,9 @@ namespace tetriz
         constexpr void clear_lines()
         {
             const auto row_begin = current_.coordinates.y + offsets[current_.shape][current_.rotation][Side::Top];
-            const auto row_count = bounding_box_sizes[current_.shape] - offsets[current_.shape][current_.rotation][Side::Bottom];
+            const auto row_count = std::min(
+                    bounding_box_sizes[current_.shape] - offsets[current_.shape][current_.rotation][Side::Bottom],
+                    board_.size() - row_begin);
 
             for (auto row : std::views::iota(row_begin) | std::views::take(row_count))
                 if (std::ranges::all_of(board_[row], is_occupied))
