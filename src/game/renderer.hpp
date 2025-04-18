@@ -29,74 +29,59 @@ constexpr auto block_to_color(tetriz::Block block) -> Color
     }
 }
 
-constexpr auto render(const tetriz::Board& board, const tetriz::Tetromino tetromino)
+constexpr auto render(const tetriz::Board& board, const tetriz::Tetromino& tetromino)
 {
-    auto result = Elements{};
-    const auto board_raw = project_on_board(board, tetromino);
+    return canvas(10*4, 20*4, [&](Canvas& canvas) {
+        const auto board_raw = project_on_board(board, tetromino);
 
-    for (const auto& row_raw : board_raw | std::views::drop(2))
-    {
-        auto row = Elements{};
-        for (const auto block : row_raw)
-            row.push_back(text(" ┘") | bgcolor(block_to_color(block)) | color(Color::GrayDark));
-
-        result.push_back(hbox(std::move(row)));
-    }
-
-    return vbox(result);
+        for (int r = 0; r < 20; r++)
+            for (int c = 0; c < 10; c++)
+                canvas.DrawText(c * 4, r * 4, " ┘", [b=board_raw[r+2][c]](Pixel &p) {
+                    p.foreground_color = Color::GrayDark;
+                    if (b != tetriz::Block::Void)
+                        p.background_color = block_to_color(b);
+                });
+    });
 }
 
-constexpr auto render(const std::array<tetriz::TetrominoShape, 4>& bag)
+constexpr auto render(std::ranges::range auto&& bag)
 {
-    auto result = Elements{};
-    for (const auto shape : bag)
-    {
-        for (const auto row_raw : tetriz::bounding_boxes[shape][tetriz::TetrominoRotation::Base] | std::views::take(3))
+    return canvas(4*4, 12*4, [bag](Canvas& canvas) {
+        for (const auto [n, shape] : bag | std::views::enumerate)
         {
-            auto to_block = [&](bool block){
-                return block ? static_cast<tetriz::Block>(shape) : tetriz::Block::Void; };
-
-            auto row = Elements{};
-            for (const auto block : row_raw | std::views::transform(to_block))
-                row.push_back(text(" ┘") | bgcolor(block_to_color(block)) | color(Color::GrayDark));
-
-            result.push_back(hbox(std::move(row)));
+            const auto& bb = tetriz::bounding_boxes[shape][tetriz::TetrominoRotation::Base];
+            for (const auto [o, row_raw] : bb | std::views::take(3) | std::views::enumerate)
+                for (const auto [x, block] : row_raw | std::views::enumerate)
+                    canvas.DrawText(x * 4, (n*3+o)*4, " ┘", [block, shape](Pixel& p) {
+                        p.foreground_color = Color::GrayDark;
+                        if (block)
+                            p.background_color = block_to_color(static_cast<tetriz::Block>(shape));
+                    });
         }
-    }
-
-    return vbox(result);
+    });
 }
 
-constexpr auto render(const std::optional<tetriz::TetrominoShape> tetromino)
+constexpr auto render(const std::optional<tetriz::TetrominoShape>& tetromino)
 {
-    auto result = Elements{};
-    if (tetromino)
-    {
-        auto to_block = [&](bool block){
-            return block ? static_cast<tetriz::Block>(*tetromino) : tetriz::Block::Void; };
-
-        for (const auto row_raw : tetriz::bounding_boxes[*tetromino][tetriz::TetrominoRotation::Base] | std::views::take(3))
+    return canvas(4*4, 3*4, [&](Canvas& canvas) {
+        if (tetromino)
         {
-            auto row = Elements{};
-            for (const auto block : row_raw | std::views::transform(to_block))
-                row.push_back(text(" ┘") | bgcolor(block_to_color(block)) | color(Color::GrayDark));
-
-            result.push_back(hbox(std::move(row)));
+            const auto& bb = tetriz::bounding_boxes[*tetromino][tetriz::TetrominoRotation::Base];
+            for (const auto [y, row_raw] : bb | std::views::take(3) | std::views::enumerate)
+                for (const auto [x, block] : row_raw | std::views::enumerate)
+                    canvas.DrawText(x * 4, y * 4, " ┘", [block, shape=*tetromino](Pixel& p) {
+                        p.foreground_color = Color::GrayDark;
+                        if (block)
+                            p.background_color = block_to_color(static_cast<tetriz::Block>(shape));
+                    });
         }
-    }
-    else
-    {
-        for (const auto _ : std::views::iota(0, 3))
+        else
         {
-            auto row = Elements{};
-            for (const auto _ : std::views::iota(0, 4))
-                row.push_back(text(" ┘") | color(Color::GrayDark));
-
-            result.push_back(hbox(std::move(row)));
+            canvas.DrawText(0, 0, " ┘ ┘ ┘ ┘", Color::GrayDark);
+            canvas.DrawText(0, 4, " ┘ ┘ ┘ ┘", Color::GrayDark);
+            canvas.DrawText(0, 8, " ┘ ┘ ┘ ┘", Color::GrayDark);
         }
-    }
-
-    return vbox(result);
+    });
 }
 
 constexpr auto render(uint64_t score)
@@ -106,13 +91,13 @@ constexpr auto render(uint64_t score)
 
 constexpr auto render(Duration timestamp)
 {
-    return text(std::format("{:%M:%S}", timestamp)) | center;
+    return text(std::format("{:%M:%S}", timestamp)) | align_right;
 }
 
-constexpr auto compose(const auto& board, const auto& bag, const auto& swap, const auto& score, const auto& time) -> Element
+constexpr auto render(const auto& board, const auto& bag, const auto& swap, const auto& score, const auto& time) -> Elements
 {
     constexpr auto side_panel_width = 10;
-    return hflow(
+    return {
         window(time, board),
         vbox(
             window(text("score"), score)
@@ -124,7 +109,7 @@ constexpr auto compose(const auto& board, const auto& bag, const auto& swap, con
                 | size(WIDTH, EQUAL, side_panel_width)
                 | size(HEIGHT, EQUAL, 5)
         )
-    ) | color(Color::Default);
+    };
 }
 
 inline
@@ -137,12 +122,12 @@ auto make_board_renderer(const tetriz::Game& game, const auto& time_source) -> C
         const auto score = render(game.score());
         const auto time = render(time_source());
 
-        return compose(board, bag, swap, score, time);
+        return hbox(render(board, bag, swap, score, time));
     });
 }
 
 inline
-auto make_board_renderer(const tetriz::proto::DatagramGame& game, const tetriz::proto::DatagramTime& time) -> Element
+auto render(const tetriz::proto::DatagramGame& game, const tetriz::proto::DatagramTime& time) -> Elements
 {
     const auto board = render(game.board, game.current);
     const auto bag = render(game.bag);
@@ -150,7 +135,7 @@ auto make_board_renderer(const tetriz::proto::DatagramGame& game, const tetriz::
     const auto score = render(game.score);
     const auto timestamp = render(time.timestamp);
 
-    return compose(board, bag, swap, score, timestamp);
+    return render(board, bag, swap, score, timestamp);
 }
 
 inline
@@ -158,7 +143,8 @@ auto make_boards_renderer(std::span<const tetriz::proto::DatagramGame> games, co
 {
     return Renderer([games, &time] {
         return ftxui::hbox(games
-                | std::views::transform([&time](const auto& game) { return make_board_renderer(game, time); })
+                | std::views::transform([&time](const auto& game) { return render(game, time); })
+                | std::views::join
                 | std::ranges::to<std::vector>());
     });
 }

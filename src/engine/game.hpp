@@ -24,9 +24,11 @@ namespace tetriz
     class Game
     {
     public:
-        constexpr Game() {
+        constexpr Game()
+        {
             log_info("new game!");
-            spawn(bag_.poll()); }
+            spawn(bag_.poll());
+        }
 
         constexpr void move(Direction direction)
         {
@@ -79,30 +81,21 @@ namespace tetriz
             if (just_swapped_)
                 return;
 
-            if (!already_swapped_)
-            {
+            if (!swapped_)
                 swapped_ = bag_.poll();
-                already_swapped_ = true;
-            }
 
             const auto original_shape = current_.shape;
-            spawn(swapped_);
+            spawn(*swapped_);
             swapped_ = original_shape;
             just_swapped_ = true;
         }
 
         constexpr auto finished() const -> bool { return finished_; }
         constexpr auto board() const -> const Board& { return board_; }
-        constexpr auto current() const -> Tetromino { return current_; }
+        constexpr auto current() const -> const Tetromino& { return current_; }
         constexpr auto score() const -> uint16_t { return score_; }
         constexpr auto bag() const -> const TetrominoBag& { return bag_; }
-        constexpr auto swapped() const -> std::optional<TetrominoShape>
-        {
-            if (already_swapped_)
-                return swapped_;
-
-            return std::nullopt;
-        }
+        constexpr auto swapped() const -> const std::optional<TetrominoShape>& { return swapped_; }
 
     private:
         constexpr auto is_empty(int x_offset, int y_offset) const -> bool
@@ -178,9 +171,8 @@ namespace tetriz
         }
 
         Tetromino current_{};
-        TetrominoShape swapped_{};
+        std::optional<TetrominoShape> swapped_{};
         TetrominoBag bag_{};
-        bool already_swapped_ = false;
         bool just_swapped_ = false;
         bool finished_ = false;
         uint16_t score_ = 0;

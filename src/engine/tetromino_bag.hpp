@@ -38,11 +38,9 @@ namespace tetriz
 
         template <size_t N>
         requires (N <= 7)
-        constexpr auto peek() const -> std::array<TetrominoShape, N>
+        constexpr auto peek() const
         {
-            auto result = std::array<TetrominoShape, N>{};
-            std::ranges::copy(bag_ | std::views::take(N), result.begin());
-            return result;
+            return bag_ | std::views::take(N);
         }
 
     private:
