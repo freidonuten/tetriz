@@ -1,28 +1,27 @@
 #pragma once
 
-#include "magic_enum/magic_enum.hpp"
-
-#include "engine/tetromino_shape.hpp"
 #include <algorithm>
 #include <generator>
 #include <random>
 
+#include "magic_enum/magic_enum.hpp"
+
+#include "engine/tetromino_shape.hpp"
+
 
 namespace tetriz
 {
-    inline std::random_device rd;
-    inline std::mt19937 gen{rd()};
-
     class TetrominoBag
     {
     public:
-        constexpr TetrominoBag()
+        constexpr TetrominoBag(uint32_t seed)
+            : generator_(seed)
         {
             fill(left_half());
             fill(right_half());
         }
 
-        auto poll() -> TetrominoShape
+        constexpr auto poll() -> TetrominoShape
         {
             const auto next = bag_.front();
             std::shift_left(bag_.begin(), bag_.end(), 1);
@@ -40,14 +39,16 @@ namespace tetriz
         requires (N <= 7)
         constexpr auto peek() const
         {
-            return bag_ | std::views::take(N);
+            auto result = std::array<TetrominoShape, N>{};
+            std::ranges::copy_n(bag_.begin(), N, result.begin());
+            return result;
         }
 
     private:
         constexpr void fill(std::span<TetrominoShape, 7> range)
         {
             std::ranges::copy(magic_enum::enum_values<TetrominoShape>(), range.begin());
-            std::ranges::shuffle(range, gen);
+            std::ranges::shuffle(range, generator_);
         }
 
         constexpr auto left_half() -> std::span<TetrominoShape, 7>
@@ -61,6 +62,7 @@ namespace tetriz
         }
 
         uint8_t current_shift_;
-        std::array<tetriz::TetrominoShape, 14> bag_;
+        std::mt19937 generator_;
+        std::array<TetrominoShape, 14> bag_;
     };
 }

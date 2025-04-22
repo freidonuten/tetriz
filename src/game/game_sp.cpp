@@ -18,7 +18,7 @@ auto main(int argc, char** argv) -> int
             std::chrono::high_resolution_clock::now() - start_time);
     };
 
-    auto game = tetriz::Game{};
+    auto game = tetriz::Game(4);
     auto game_renderer = make_board_renderer(game, time);
 
     auto event_listener = CatchEvent(game_renderer, [&](const Event& e) {

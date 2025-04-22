@@ -44,7 +44,7 @@ constexpr auto render(const tetriz::Board& board, const tetriz::Tetromino& tetro
     });
 }
 
-constexpr auto render(std::ranges::range auto&& bag)
+constexpr auto render(std::ranges::range auto bag)
 {
     return canvas(4*4, 12*4, [bag](Canvas& canvas) {
         for (const auto [n, shape] : bag | std::views::enumerate)

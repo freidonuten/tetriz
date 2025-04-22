@@ -76,7 +76,8 @@ public:
     }
 
 private:
-    int32_t room_size_ = 0;
+    uint32_t room_size_ = 0;
+    uint32_t room_seed_ = Clock::now().time_since_epoch().count();
     std::map<net::ConnectionWrapper, GameEngine> games_;
     std::jthread worker_ = {};
     std::atomic<bool> run_ = true;
@@ -114,7 +115,7 @@ private:
         games_.emplace(
                 std::piecewise_construct,
                 std::forward_as_tuple(player),
-                std::forward_as_tuple());
+                std::forward_as_tuple(room_seed_));
 
         if (games_.size() == room_size_)
             start();

@@ -109,7 +109,7 @@ auto main(int argc, char** argv) -> int
                     {
                         const auto game = std::get<DatagramGame>(msg->payload);
                         games[game.player_id] = game;
-                        processable = processable.subspan(sizeof(decltype(serialize_game(0, {}))));
+                        processable = processable.subspan(sizeof(std::invoke_result_t<decltype(serialize_game), uint8_t, tetriz::Game>));
                     }
                     else if (msg->type == MessageType::Time)
                     {

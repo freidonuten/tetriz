@@ -119,7 +119,7 @@ namespace tetriz::proto
             player_id,
             game.board(),
             game.current(),
-            game.swapped().value_or(TetrominoShape::I),
+            game.swapped().value_or(TetrominoShape::T),
             game.bag().peek<sizeof(DatagramGame::bag)>(),
             game.score()
         );

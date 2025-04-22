@@ -6,7 +6,6 @@
 #include "engine/offsets.hpp"
 #include "engine/tetromino.hpp"
 #include "engine/tetromino_bag.hpp"
-#include "logger.hpp"
 
 
 namespace tetriz
@@ -24,9 +23,9 @@ namespace tetriz
     class Game
     {
     public:
-        constexpr Game()
+        constexpr Game(uint32_t seed)
+            : bag_(seed)
         {
-            log_info("new game!");
             spawn(bag_.poll());
         }
 
@@ -134,7 +133,6 @@ namespace tetriz
 
         constexpr void spawn(TetrominoShape shape)
         {
-            log_info("spawned: {}", magic_enum::enum_name(shape));
             current_ = Tetromino{
                 .shape = shape,
                 .rotation = TetrominoRotation::Base,
@@ -174,7 +172,7 @@ namespace tetriz
 
         Tetromino current_{};
         std::optional<TetrominoShape> swapped_{};
-        TetrominoBag bag_{};
+        TetrominoBag bag_;
         bool just_swapped_ = false;
         bool finished_ = false;
         uint16_t score_ = 0;

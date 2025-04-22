@@ -10,6 +10,10 @@ using namespace std::chrono_literals;
 class GameEngine
 {
 public:
+    GameEngine(uint32_t seed)
+        : game_(seed)
+    {}
+
     void action(tetriz::proto::Move move)
     {
         using tetriz::proto::Move;
