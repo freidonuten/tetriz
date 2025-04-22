@@ -64,30 +64,10 @@ namespace net
             return setsockopt(descriptor_, IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val)) == 0;
         }
 
-
-        [[nodiscard]]
-        auto read_str() -> std::optional<std::string>
-        {
-            constexpr auto chunk_size = 32ul;
-            constexpr auto size_limit = 1024ul;
-
-            auto message = std::string("");
-            auto buffer = std::array<char, chunk_size>{};
-            auto received = 0l;
-
-            while ((received = ::recv(descriptor_, buffer.data(), buffer.size(), 0)) > 0)
-                message.append(buffer.data(), received);
-
-            return message.empty()
-                ? std::nullopt
-                : std::optional(message);
-        }
-
         [[nodiscard]]
         auto read() -> std::optional<std::vector<uint8_t>>
         {
             constexpr auto chunk_size = 32ul;
-            constexpr auto size_limit = 1024ul;
 
             auto message = std::vector<uint8_t>{};
             auto buffer = std::array<char, chunk_size>{};
