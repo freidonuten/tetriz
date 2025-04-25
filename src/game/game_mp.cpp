@@ -19,6 +19,7 @@ struct Configuration
 {
     std::string host;
     uint16_t port;
+    size_t room_size;
 };
 
 auto parse(int argc, char** argv)
@@ -39,6 +40,14 @@ auto parse(int argc, char** argv)
         .scan<'i', uint16_t>()
         .store_into(configuration.port);
 
+    program.add_argument("--room-size")
+        .help("request room size")
+        .default_value<size_t>(2)
+        .scan<'i', size_t>()
+        .choices(2, 3, 4, 5)
+        .nargs(1)
+        .store_into(configuration.room_size);
+
     program.parse_args(argc, argv);
 
     return configuration;
@@ -58,9 +67,9 @@ auto main(int argc, char** argv) -> int
 
     setsockopt(sock.descriptor(), SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
-    auto games = std::array<tetriz::proto::DatagramGame, 3>{};
+    auto games = std::array<tetriz::proto::DatagramGame, 5>{};
     auto time = tetriz::proto::DatagramTime{};
-    auto game_renderer = make_boards_renderer(games, time);
+    auto game_renderer = make_boards_renderer(games | std::views::take(config.room_size), time);
 
     auto event_listener = CatchEvent(game_renderer, [&](const Event& e) {
         using tetriz::proto::Move;
@@ -92,7 +101,7 @@ auto main(int argc, char** argv) -> int
 
     auto running = true;
 
-    sock.write(serialize_hola());
+    sock.write(serialize_hola(config.room_size));
 
     auto conn_worker = std::jthread([&]{
         while (running)

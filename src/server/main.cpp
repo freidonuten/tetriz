@@ -4,6 +4,8 @@
 #include "epoll.hpp"
 
 #include "server/room.hpp"
+#include "server/room_list.hpp"
+
 
 
 bool run = true;
@@ -13,14 +15,36 @@ void signal_handler(int signal)
     run = false;
 }
 
-Room room(3);
+RoomList rooms;
 
 void notify(net::ConnectionWrapper client)
 {
-    if (const auto payload = client.read(); payload)
-        room.notify(client, *payload);
-    else
-        room.leave(client);
+    const auto message = client
+        .read()
+        .and_then(tetriz::proto::deserialize);
+
+    if (!message)
+    {
+        if (const auto room = rooms.get_room(client); room)
+            room->get().leave(client);
+
+        return;
+    }
+
+    if (message->type == tetriz::proto::MessageType::Hola)
+    {
+        rooms.get_available_room(std::get<tetriz::proto::DatagramHola>(message->payload).room_size)
+            .notify(client, *message);
+
+        return;
+    }
+
+    const auto room = rooms.get_room(client);
+
+    if (!room)
+        return;
+
+    room->get().notify(client, *message);
 }
 
 auto main(int argc, char** argv) -> int

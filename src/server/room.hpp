@@ -5,7 +5,6 @@
 
 #include "networking_socket.hpp"
 #include "server/game_engine.hpp"
-#include "util/encoding.hpp"
 #include "util/time.hpp"
 #include "proto/protocol.hpp"
 
@@ -17,26 +16,11 @@ public:
         : room_size_(room_size)
     {}
 
-    ~Room()
+    void notify(net::ConnectionWrapper client, const tetriz::proto::Datagram& message)
     {
-        worker_.join();
-    }
-
-    void notify(net::ConnectionWrapper client, std::span<const uint8_t> message)
-    {
-        log_trace("Received: {}", hexdump(message));
-
-        const auto msg = tetriz::proto::deserialize(message);
-
-        if (!msg)
-        {
-            log_debug("Invalid message!");
-            return;
-        }
-
         if (!games_.contains(client))
         {
-            if (msg->type == tetriz::proto::MessageType::Hola)
+            if (message.type == tetriz::proto::MessageType::Hola)
             {
                 log_debug("Player joined");
                 add_player(client);
@@ -50,7 +34,7 @@ public:
             return;
         }
 
-        if (msg->type == tetriz::proto::MessageType::Move)
+        if (message.type == tetriz::proto::MessageType::Move)
         {
             if (start_time_ > Clock::now())
             {
@@ -60,9 +44,10 @@ public:
 
             games_
                 .at(client.descriptor())
-                .action(std::get<tetriz::proto::DatagramMove>(msg->payload).move);
+                .action(std::get<tetriz::proto::DatagramMove>(message.payload).move);
 
-            notify_move(client);
+            //notify_move(client);
+            notify_tick();
             return;
         }
 
@@ -75,7 +60,35 @@ public:
         client.close();
     }
 
+    void stop()
+    {
+        run_.exchange(false);
+    }
+
+    auto has_member(net::ConnectionWrapper client) const -> bool
+    {
+        return games_.contains(client);
+    }
+
+    auto empty() const -> bool
+    {
+        return games_.empty();
+    }
+
+    auto has_slot() const -> bool
+    {
+        return games_.size() < room_size_;
+    }
+
+    auto size() const -> size_t
+    {
+        return room_size_;
+    }
+
 private:
+    inline static auto room_id = 0u;
+
+    uint32_t room_id_ = ++room_id;
     uint32_t room_size_ = 0;
     uint32_t room_seed_ = Clock::now().time_since_epoch().count();
     std::map<net::ConnectionWrapper, GameEngine> games_;
@@ -95,6 +108,8 @@ private:
             for (auto tick = -countdown_length; run_; tick += 1s)
             {
                 std::this_thread::sleep_until(start_time_ + tick);
+
+                log_trace("room #{}: tick", room_id_);
 
                 if (start_time_ < Clock::now())
                     std::ranges::for_each(games_ | std::views::values, &GameEngine::tick);
@@ -121,6 +136,7 @@ private:
             start();
     }
 
+    // FIXME Broken indexing
     void notify_move(net::ConnectionWrapper originator_sock)
     {
         const auto& originator_game = games_.at(originator_sock).game();
