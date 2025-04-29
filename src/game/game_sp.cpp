@@ -13,15 +13,14 @@ using namespace std::chrono_literals;
 
 auto main(int argc, char** argv) -> int
 {
-    const auto time = [start_time = Clock::now()]{
-        return std::chrono::duration_cast<Duration>(
-            std::chrono::high_resolution_clock::now() - start_time);
-    };
-
+    const auto time_begin = Clock::now();
+    auto time = std::chrono::duration_cast<Duration>(Clock::now() - time_begin);
     auto game = tetriz::Game(4);
     auto game_renderer = make_board_renderer(game, time);
-
     auto event_listener = CatchEvent(game_renderer, [&](const Event& e) {
+        if (game.state() != tetriz::State::Playing)
+            return false;
+
         if (e == Event::ArrowLeft || e == Event::Character('h'))
             game.move(tetriz::Direction::Left);
         else if (e == Event::ArrowRight || e == Event::Character('l'))
@@ -45,12 +44,14 @@ auto main(int argc, char** argv) -> int
 
     auto running = true;
     auto game_worker = std::jthread([&]{
-        auto next_tick = std::chrono::steady_clock::now();
-        while (running)
+        auto next_tick = std::chrono::steady_clock::now() + 1s;
+        while (running && game.state() == tetriz::State::Playing)
         {
+            time = std::chrono::duration_cast<Duration>(Clock::now() - time_begin);
+
             if (std::chrono::steady_clock::now() >= next_tick)
             {
-                game.move(tetriz::Direction::Down);
+                game.tick();
                 next_tick += 1s;
             }
 

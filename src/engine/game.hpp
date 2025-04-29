@@ -20,6 +20,13 @@ namespace tetriz
     constexpr inline auto x_shift = magic_enum::containers::array<Direction, int8_t>{ -1, 1, 0 };
     constexpr inline auto y_shift = magic_enum::containers::array<Direction, int8_t>{ 0, 0, 1 };
 
+    enum class State : uint8_t
+    {
+        Playing,
+        Finished,
+        GameOver
+    };
+
     class Game
     {
     public:
@@ -89,7 +96,7 @@ namespace tetriz
             just_swapped_ = true;
         }
 
-        constexpr auto finished() const -> bool { return finished_; }
+        constexpr auto state() const -> State { return state_; }
         constexpr auto board() const -> const Board& { return board_; }
         constexpr auto current() const -> const Tetromino& { return current_; }
         constexpr auto score() const -> uint16_t { return score_; }
@@ -127,8 +134,15 @@ namespace tetriz
         {
             project_on_board(board_, current_);
             clear_lines();
-            spawn(bag_.poll());
             just_swapped_ = false;
+
+            if (score_ >= 4)
+            {
+                state_ = State::Finished;
+                return;
+            }
+
+            spawn(bag_.poll());
         }
 
         constexpr void spawn(TetrominoShape shape)
@@ -148,7 +162,7 @@ namespace tetriz
                 return;
             }
 
-            finished_ = true;
+            state_ = State::GameOver;
         }
 
         constexpr void clear_lines()
@@ -173,8 +187,8 @@ namespace tetriz
         Tetromino current_{};
         std::optional<TetrominoShape> swapped_{};
         TetrominoBag bag_;
+        State state_ = State::Playing;
         bool just_swapped_ = false;
-        bool finished_ = false;
         uint16_t score_ = 0;
         Board board_{};
     };

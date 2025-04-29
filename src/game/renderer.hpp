@@ -113,16 +113,48 @@ constexpr auto render(const auto& board, const auto& bag, const auto& swap, cons
 }
 
 inline
-auto make_board_renderer(const tetriz::Game& game, const auto& time_source) -> Component
+auto make_board_renderer(const tetriz::Game& game, const Duration& game_time) -> Component
 {
     return Renderer([&] {
         const auto board = render(game.board(), game.current());
         const auto bag = render(game.bag().peek<4>());
         const auto swap = render(game.swapped());
         const auto score = render(game.score());
-        const auto time = render(time_source());
+        const auto time = render(game_time);
 
-        return hbox(render(board, bag, swap, score, time));
+        static constexpr auto labels = magic_enum::containers::array<tetriz::State, std::string_view>{
+            "",
+            "·▄▄▄▄         ▐ ▄ ▄▄▄ .\n"
+            "██▪ ██ ▪     •█▌▐█▀▄.▀·\n"
+            "▐█· ▐█▌ ▄█▀▄ ▐█▐▐▌▐▀▀▪▄\n"
+            "██. ██ ▐█▌.▐▌██▐█▌▐█▄▄▌\n"
+            "▀▀▀▀▀•  ▀█▄▀▪▀▀ █▪ ▀▀▀ \n",
+            " ▄▄    ▄▄▄    ▌   ▄  ▄▄▄\n"
+            "▐█ ▀   █  █  ██ ▐███ ▀▄ ▀\n"
+            "▄█ ▀█▄ █▀▀█ ▐█ ▌▐▌▐█ ▐▀▀ ▄\n"
+            "▐█▄ ▐█ █  ▌ ██ ██▌▐█▌▐█▄▄▌\n"
+            " ▀▀▀▀  ▀  ▀ ▀▀  █ ▀▀▀ ▀▀▀\n"
+            "            ▌ ▐ ▄▄▄  ▄▄▄\n"
+            "      ▄█▀▄  █ █▌▀▄ ▀ ▀▄ █\n"
+            "     ▐█▌ ▐▌▐█▐█ ▐▀▀ ▄▐▀▀▄\n"
+            "      ▀█▄▀  ███ ▐█▄▄▌▐█ █▌\n"
+            "             ▀   ▀▀▀  ▀  ▀\n",
+        };
+
+        switch (game.state()) {
+        case tetriz::State::Playing:
+            return hbox(render(board, bag, swap, score, time));
+        case tetriz::State::GameOver:
+            return dbox(
+                hbox(render(board, bag, swap, score, time)),
+                paragraph(std::string(labels[game.state()])) | color(Color::Red3) | border | bgcolor(Color::RGBA(0,0,0,230)) | center
+            );
+        case tetriz::State::Finished:
+            return dbox(
+                hbox(render(board, bag, swap, score, time)),
+                paragraph(std::string(labels[game.state()])) | color(Color::LightGreen) | border | bgcolor(Color::RGBA(0,0,0,230)) | center
+            );
+        }
     });
 }
 
