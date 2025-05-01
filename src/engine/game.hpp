@@ -30,8 +30,11 @@ namespace tetriz
     class Game
     {
     public:
-        constexpr Game(uint32_t seed)
+        constexpr Game(uint32_t seed) : Game(seed, 40) { }
+
+        constexpr Game(uint32_t seed, uint16_t score_goal)
             : bag_(seed)
+            , score_goal_(score_goal)
         {
             spawn(bag_.poll());
         }
@@ -135,14 +138,13 @@ namespace tetriz
             project(board_, current_);
             clear_lines();
             just_swapped_ = false;
+            spawn(bag_.poll());
 
-            if (score_ >= 4)
+            if (score_ >= score_goal_)
             {
                 state_ = State::Finished;
                 return;
             }
-
-            spawn(bag_.poll());
         }
 
         constexpr void spawn(TetrominoShape shape)
@@ -190,6 +192,7 @@ namespace tetriz
         State state_ = State::Playing;
         bool just_swapped_ = false;
         uint16_t score_ = 0;
+        uint16_t score_goal_ = 40;
         Board board_{};
     };
 }
