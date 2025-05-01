@@ -26,13 +26,14 @@ constexpr auto block_to_color(tetriz::Block block) -> Color
         case tetriz::Block::Lime:    return Color::GreenLight;
         case tetriz::Block::Magenta: return Color::Magenta;
         case tetriz::Block::Red:     return Color::Red;
+        case tetriz::Block::Shadow:  return Color::RGBA(64, 64, 64, 128);
     }
 }
 
 constexpr auto render(const tetriz::Board& board, const tetriz::Tetromino& tetromino)
 {
     return canvas(10*4, 20*4, [&](Canvas& canvas) {
-        const auto board_raw = project_on_board(board, tetromino);
+        const auto board_raw = project_with_shadow(board, tetromino);
 
         for (int r = 0; r < 20; r++)
             for (int c = 0; c < 10; c++)

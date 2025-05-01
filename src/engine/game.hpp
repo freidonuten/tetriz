@@ -132,7 +132,7 @@ namespace tetriz
 
         constexpr void lock()
         {
-            project_on_board(board_, current_);
+            project(board_, current_);
             clear_lines();
             just_swapped_ = false;
 
