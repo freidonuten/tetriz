@@ -1,11 +1,11 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <ranges>
 
 #include "engine/bounding_box.hpp"
-#include "engine/offsets.hpp"
 #include "engine/tetromino.hpp"
 
 
@@ -27,47 +27,41 @@ namespace tetriz
         Shadow
     };
 
-    constexpr auto is_occupied(Block block) -> bool
+    using Board = std::array<std::array<Block, board_width>, board_height>;
+
+    constexpr auto is_occupied(const tetriz::Board& board, Coordinates coordinates)
     {
-        return block != Block::Void;
+        return board[coordinates.y][coordinates.x] != Block::Void;
     }
 
-    using Board = std::array<std::array<Block, board_width>, board_height>;
+    constexpr auto is_valid_coordinate(Coordinates coordinates)
+    {
+        const auto [x, y] = coordinates;
+
+        return x >= 0
+            && y >= 0
+            && x < board_width
+            && y < board_height;
+    }
+
+    constexpr auto blocks_of(tetriz::Tetromino tetromino)
+    {
+        return tetrominos[tetromino.shape][tetromino.rotation]
+            | std::views::transform(std::bind_front(std::plus{}, tetromino.coordinates));
+    }
 
     constexpr auto projects(const tetriz::Board& board, tetriz::Tetromino tetromino)
     {
-        const auto bb_size = bounding_box_sizes[tetromino.shape];
-        const auto offsets = tetriz::offsets[tetromino.shape][tetromino.rotation];
-        const auto [curr_x, curr_y] = tetromino.coordinates;
+        const auto blocks = blocks_of(tetromino);
 
-        if (curr_x + offsets[Side::Left] < 0
-         || curr_x - offsets[Side::Right] + bb_size > board_width
-         || curr_y - offsets[Side::Bottom] + bb_size > board_height)
-            return false;
-
-        const auto bounding_box = bounding_boxes[tetromino.shape][tetromino.rotation];
-        for (auto y = offsets[Side::Top]; y < bb_size - offsets[Side::Bottom]; ++y)
-            for (auto x = offsets[Side::Left]; x < bb_size - offsets[Side::Right]; ++x)
-                if (bounding_box[y][x] && is_occupied(board[y + curr_y][x + curr_x]))
-                    return false;
-
-        return true;
+        return std::ranges::all_of(blocks, is_valid_coordinate)
+            && std::ranges::all_of(blocks, std::bind_front(std::not_fn(is_occupied), board));
     }
 
     constexpr void project(tetriz::Board& board, tetriz::Tetromino tetromino, Block block)
     {
-        const auto [base_x, base_y] = tetromino.coordinates;
-        const auto bounding_box = tetriz::bounding_boxes[tetromino.shape][tetromino.rotation];
-
-        for (const auto& [y, row] : bounding_box | std::views::enumerate)
-            for (const auto [x, cell] : row | std::views::enumerate)
-            {
-                if ((base_x + x) >= board_width || (base_y + y) >= board_height)
-                    continue;
-
-                if (cell)
-                    board[base_y + y][base_x + x] = block;
-            }
+        for (const auto [x, y] : blocks_of(tetromino))
+            board[y][x] = block;
     }
 
     constexpr void project(tetriz::Board& board, tetriz::Tetromino tetromino)

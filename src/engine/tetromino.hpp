@@ -11,6 +11,21 @@ namespace tetriz
     {
         TetrominoShape shape = TetrominoShape::T;
         TetrominoRotation rotation = TetrominoRotation::Base;
-        TetrominoCoordinates coordinates{};
+        Coordinates coordinates{};
     };
+
+    constexpr auto operator+(Tetromino lhs, Coordinates rhs) -> Tetromino
+    {
+        return {
+            .shape = lhs.shape,
+            .rotation = lhs.rotation,
+            .coordinates = lhs.coordinates + rhs
+        };
+    }
+
+    constexpr auto operator+=(Tetromino& lhs, Coordinates rhs) -> Tetromino&
+    {
+        lhs.coordinates += rhs;
+        return lhs;
+    }
 }

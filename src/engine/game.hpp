@@ -12,13 +12,24 @@ namespace tetriz
 {
     enum class Direction : uint8_t
     {
+        None,
         Left,
         Right,
-        Down
+        Down,
+        Up
     };
 
-    constexpr inline auto x_shift = magic_enum::containers::array<Direction, int8_t>{ -1, 1, 0 };
-    constexpr inline auto y_shift = magic_enum::containers::array<Direction, int8_t>{ 0, 0, 1 };
+    constexpr inline auto moves = magic_enum::containers::array<Direction, Coordinates>{
+        Coordinates{ .x =  0, .y =  0 },
+        Coordinates{ .x = -1, .y =  0 },
+        Coordinates{ .x =  1, .y =  0 },
+        Coordinates{ .x =  0, .y =  1 },
+        Coordinates{ .x =  0, .y = -1 },
+    };
+
+    constexpr inline auto offset_none = moves[Direction::None];
+    constexpr inline auto offset_down = moves[Direction::Down];
+    constexpr inline auto offset_up = moves[Direction::Up];
 
     enum class State : uint8_t
     {
@@ -41,13 +52,11 @@ namespace tetriz
 
         constexpr void move(Direction direction)
         {
-            const auto x_shift = tetriz::x_shift[direction];
-            const auto y_shift = tetriz::y_shift[direction];
+            const auto move = tetriz::moves[direction];
             
-            if (is_empty(x_shift, y_shift))
+            if (is_empty(move))
             {
-                current_.coordinates.x += x_shift;
-                current_.coordinates.y += y_shift;
+                current_.coordinates += move;
             }
             else if (direction == Direction::Down)
             {
@@ -62,7 +71,7 @@ namespace tetriz
 
         constexpr void drop()
         {
-            while (is_empty(0, 1))
+            while (is_empty(offset_down))
                 current_.coordinates.y += 1;
 
             lock();
@@ -72,12 +81,11 @@ namespace tetriz
         {
             current_.rotation = next_left(current_.rotation);
 
-            for (auto [x_offset, y_offset] : kick_offsets(current_.shape, current_.rotation))
+            for (const auto offset : kick_offsets(current_.shape, current_.rotation))
             {
-                if (is_empty(x_offset, y_offset))
+                if (is_empty(offset))
                 {
-                    current_.coordinates.x += x_offset;
-                    current_.coordinates.y += y_offset;
+                    current_.coordinates += offset;
                     return;
                 }
             }
@@ -107,30 +115,9 @@ namespace tetriz
         constexpr auto swapped() const -> const std::optional<TetrominoShape>& { return swapped_; }
 
     private:
-        constexpr auto is_empty(int x_offset, int y_offset) const -> bool
+        constexpr auto is_empty(Coordinates offset) const -> bool
         {
-            const auto bb_size = bounding_box_sizes[current_.shape];
-            const auto offsets = tetriz::offsets[current_.shape][current_.rotation];
-            const auto [curr_x, curr_y] = current_.coordinates;
-
-            if (curr_x + x_offset + offsets[Side::Left] < 0
-             || curr_x + x_offset - offsets[Side::Right] + bb_size > board_width
-             || curr_y + y_offset - offsets[Side::Bottom] + bb_size > board_height)
-                return false;
-
-            const auto bounding_box = bounding_boxes[current_.shape][current_.rotation];
-            for (auto y = offsets[Side::Top]; y < bb_size - offsets[Side::Bottom]; ++y)
-                for (auto x = offsets[Side::Left]; x < bb_size - offsets[Side::Right]; ++x)
-                    if (bounding_box[y][x] && is_occupied(board_[y + curr_y + y_offset][x + curr_x + x_offset]))
-                        return false;
-
-            return true;
-        }
-
-        constexpr void try_lock()
-        {
-            if (!is_empty(0, 1))
-                lock();
+            return projects(board_, current_ + offset);
         }
 
         constexpr void lock()
@@ -155,13 +142,13 @@ namespace tetriz
                 .coordinates = { 3, 1 }
             };
 
-            if (is_empty(0, 0))
-                return;
-
-            if (is_empty(0, -1))
+            for (const auto offset : {offset_none, offset_up})
             {
-                --current_.coordinates.y;
-                return;
+                if (is_empty(offset))
+                {
+                    current_.coordinates += offset;
+                    return;
+                }
             }
 
             state_ = State::GameOver;
@@ -175,7 +162,7 @@ namespace tetriz
                     board_.size() - row_begin);
 
             for (auto row : std::views::iota(row_begin) | std::views::take(row_count))
-                if (std::ranges::all_of(board_[row], is_occupied))
+                if (std::ranges::all_of(board_[row], std::bind_front(std::not_equal_to{}, Block::Void)))
                     clear_line(row);
         }
 
