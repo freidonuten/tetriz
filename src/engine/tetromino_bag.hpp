@@ -61,8 +61,8 @@ namespace tetriz
             return std::span(bag_).last<7>();
         }
 
-        uint8_t current_shift_ = 0;
         xoroshiro64ss prng_{ 0 };
         std::array<TetrominoShape, 14> bag_;
+        uint8_t current_shift_ = 0;
     };
 }

@@ -175,11 +175,11 @@ namespace tetriz
 
         Tetromino current_{};
         std::optional<TetrominoShape> swapped_{};
-        TetrominoBag bag_;
         State state_ = State::Playing;
         bool just_swapped_ = false;
         uint16_t score_ = 0;
         uint16_t score_goal_ = 40;
         Board board_{};
+        TetrominoBag bag_;
     };
 }
