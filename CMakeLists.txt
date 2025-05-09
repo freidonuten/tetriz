@@ -1,23 +1,19 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.24)
 project(tetriz VERSION 1.0.1)
 
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always")
-set(EXT_LIBRARY_PATH ${PROJECT_SOURCE_DIR}/lib)
-set(INT_LIBRARY_PATH ${PROJECT_SOURCE_DIR}/src)
 
-add_subdirectory(src/game)
+add_compile_options(-Wall -Wextra -Wpedantic -fdiagnostics-color=always)
 
-add_library(libepoll OBJECT src/epoll.cpp)
+add_subdirectory(app/server)
+add_subdirectory(app/game)
 
-add_executable(server src/server/main.cpp $<TARGET_OBJECTS:libepoll>)
-add_executable(tests test/main.cpp)
-
-add_compile_options(-Wall -Wextra -Wpedantic)
-
-include_directories(src)
-include_directories(lib)
+add_subdirectory(lib/engine)
+add_subdirectory(lib/logging)
+add_subdirectory(lib/networking)
+add_subdirectory(lib/protocol)
+add_subdirectory(lib/util)
 
 include(FetchContent)
 
@@ -27,10 +23,23 @@ FetchContent_Declare(
     GIT_TAG        v1.16.0
 )
 
-FetchContent_MakeAvailable(googletest)
+FetchContent_Declare(
+    magic_enum
+    GIT_REPOSITORY "https://github.com/Neargye/magic_enum"
+    GIT_TAG        v0.9.7
+)
+
+FetchContent_Declare(
+    argparse
+    GIT_REPOSITORY "https://github.com/p-ranav/argparse"
+    GIT_TAG        v3.2
+)
+
+FetchContent_MakeAvailable(googletest magic_enum argparse)
 
 enable_testing()
 
+add_executable(tests test/main.cpp)
 target_link_libraries(tests GTest::gtest_main)
 
 add_test(NAME tests COMMAND tests)
