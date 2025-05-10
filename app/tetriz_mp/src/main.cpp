@@ -1,4 +1,5 @@
 #include <span>
+#include <ranges>
 
 #include <ftxui/screen/screen.hpp>
 #include <ftxui/dom/elements.hpp>
@@ -10,7 +11,7 @@
 #include "networking/socket.hpp"
 #include "protocol/protocol.hpp"
 
-#include "renderer.hpp"
+#include "tui/renderer.hpp"
 
 using namespace ftxui;
 using namespace std::chrono_literals;

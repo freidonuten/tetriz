@@ -6,13 +6,15 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_compile_options(-Wall -Wextra -Wpedantic -fdiagnostics-color=always)
 
-add_subdirectory(app/server)
-add_subdirectory(app/game)
+add_subdirectory(app/tetrizd)
+add_subdirectory(app/tetriz_sp)
+add_subdirectory(app/tetriz_mp)
 
 add_subdirectory(lib/engine)
 add_subdirectory(lib/logging)
 add_subdirectory(lib/networking)
 add_subdirectory(lib/protocol)
+add_subdirectory(lib/tui)
 add_subdirectory(lib/util)
 
 include(FetchContent)
@@ -35,7 +37,13 @@ FetchContent_Declare(
     GIT_TAG        v3.2
 )
 
-FetchContent_MakeAvailable(googletest magic_enum argparse)
+FetchContent_Declare(
+    ftxui
+    GIT_REPOSITORY "https://github.com/ArthurSonzogni/ftxui"
+    GIT_TAG v6.0.2
+)
+
+FetchContent_MakeAvailable(googletest magic_enum argparse ftxui)
 
 enable_testing()
 

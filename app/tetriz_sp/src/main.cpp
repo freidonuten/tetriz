@@ -6,8 +6,8 @@
 
 #include "argparse/argparse.hpp"
 #include "engine/game.hpp"
-
-#include "renderer.hpp"
+#include "tui/renderer.hpp"
+#include "util/time.hpp"
 
 using namespace ftxui;
 using namespace std::chrono_literals;
