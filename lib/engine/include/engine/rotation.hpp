@@ -12,13 +12,8 @@ namespace tetriz
         Base, Right, Double, Left
     };
 
-    constexpr TetrominoRotation next_left(TetrominoRotation rotation)
+    constexpr auto next_left(TetrominoRotation rotation) -> TetrominoRotation
     {
         return magic_enum::enum_next_value_circular(rotation);
-    }
-
-    constexpr TetrominoRotation next_right(TetrominoRotation rotation)
-    {
-        return magic_enum::enum_prev_value_circular(rotation);
     }
 }

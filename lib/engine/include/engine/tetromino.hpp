@@ -28,4 +28,24 @@ namespace tetriz
         lhs.coordinates += rhs;
         return lhs;
     }
+
+    constexpr auto operator==(Tetromino lhs, Tetromino rhs) -> bool
+    {
+        return lhs.coordinates == rhs.coordinates
+            && lhs.shape == rhs.shape
+            && lhs.rotation == rhs.rotation;
+    }
+}
+
+namespace std
+{
+    template <>
+    struct hash<tetriz::Tetromino>
+    {
+        [[nodiscard]]
+        constexpr auto operator()(const tetriz::Tetromino& tetromino) const noexcept -> size_t
+        {
+            return std::bit_cast<uint32_t>(tetromino);
+        }
+    };
 }

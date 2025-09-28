@@ -1,8 +1,5 @@
-add_library(logging INTERFACE)
+add_library(logging STATIC)
 
-target_link_libraries(logging INTERFACE magic_enum)
-target_include_directories(logging
-    INTERFACE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:include>
-)
+target_sources(logging PRIVATE src/logger.cpp)
+target_include_directories(logging PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(logging PUBLIC magic_enum)

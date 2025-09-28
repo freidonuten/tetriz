@@ -1,6 +1,5 @@
 #pragma once
 
-#include <chrono>
 #include <cstdint>
 #include <variant>
 
@@ -22,20 +21,12 @@ namespace tetriz::proto
         Hola,
     };
 
-    enum class Move : uint8_t
-    {
-        Left,
-        Right,
-        Down,
-        Drop,
-        Rotate,
-        Swap
-    };
-
     struct DatagramMove
     {
         Move move{};
     };
+
+    using tetriz::Move;
 
     using Bag = std::array<TetrominoShape, 4>;
 

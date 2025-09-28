@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <random>
 
 
 class xoroshiro64ss
@@ -18,6 +19,11 @@ public:
             static_cast<result_type>(seed >> 32)
         }
     { }
+
+    constexpr
+    xoroshiro64ss(std::random_device rdev)
+        : xoroshiro64ss(static_cast<uint64_t>(rdev()) << 32 | rdev())
+    {}
 
     [[nodiscard("Use discard(n) to advance the engine")]]
     constexpr

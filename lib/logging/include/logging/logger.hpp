@@ -15,18 +15,24 @@ enum class Severity
     Trace
 };
 
-inline auto log_level = Severity::Info;
+auto log_level() -> Severity;
+void set_log_level(Severity);
+
+auto log_stream() -> std::ostream&;
+void set_log_stream(std::ostream&);
+
 
 namespace detail
 {
     template <Severity S, typename ...Args>
-    void log(std::ostream& outstream, std::format_string<Args...> format, Args&& ...args)
+    void log(std::format_string<Args...> format, Args&& ...args)
     {
-        if (static_cast<int>(S) <= static_cast<int>(log_level))
+        if (static_cast<int>(S) <= static_cast<int>(log_level()))
         {
-            std::print(outstream, "[{}]: ", magic_enum::enum_name<S>().substr(0, 3));
-            std::println(outstream, format, std::forward<Args>(args)...);
-            std::flush(outstream);
+            auto& ostream = log_stream();
+            std::print(ostream, "[{}]: ", magic_enum::enum_name<S>().substr(0, 3));
+            std::println(ostream, format, std::forward<Args>(args)...);
+            std::flush(ostream);
         }
     }
 }
@@ -34,29 +40,29 @@ namespace detail
 template <typename ...Args>
 void log_error(std::format_string<Args...> format, Args&& ...args)
 {
-    detail::log<Severity::Error>(std::cerr, format, std::forward<Args>(args)...);
+    detail::log<Severity::Error>(format, std::forward<Args>(args)...);
 }
 
 template <typename ...Args>
 void log_warning(std::format_string<Args...> format, Args&& ...args)
 {
-    detail::log<Severity::Warning>(std::cout, format, std::forward<Args>(args)...);
+    detail::log<Severity::Warning>(format, std::forward<Args>(args)...);
 }
 
 template <typename ...Args>
 void log_info(std::format_string<Args...> format, Args&& ...args)
 {
-    detail::log<Severity::Info>(std::cout, format, std::forward<Args>(args)...);
+    detail::log<Severity::Info>(format, std::forward<Args>(args)...);
 }
 
 template <typename ...Args>
 void log_debug(std::format_string<Args...> format, Args&& ...args)
 {
-    detail::log<Severity::Debug>(std::cout, format, std::forward<Args>(args)...);
+    detail::log<Severity::Debug>(format, std::forward<Args>(args)...);
 }
 
 template <typename ...Args>
 void log_trace(std::format_string<Args...> format, Args&& ...args)
 {
-    detail::log<Severity::Trace>(std::cout, format, std::forward<Args>(args)...);
+    detail::log<Severity::Trace>(format, std::forward<Args>(args)...);
 }

@@ -49,7 +49,8 @@ void notify(net::ConnectionWrapper client)
 
 auto main([[maybe_unused]] int argc, [[maybe_unused]] char** argv) -> int
 {
-    log_level = Severity::Trace;
+    set_log_level(Severity::Trace);
+
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
 

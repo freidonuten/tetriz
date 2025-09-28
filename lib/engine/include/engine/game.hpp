@@ -2,7 +2,6 @@
 
 #include "engine/bounding_box.hpp"
 #include "engine/game_board.hpp"
-#include "engine/kick_table.hpp"
 #include "engine/offsets.hpp"
 #include "engine/tetromino.hpp"
 #include "engine/tetromino_bag.hpp"
@@ -17,6 +16,16 @@ namespace tetriz
         Right,
         Down,
         Up
+    };
+
+    enum class Move : uint8_t
+    {
+        Left,
+        Right,
+        Down,
+        Drop,
+        Rotate,
+        Swap
     };
 
     constexpr inline auto moves = magic_enum::containers::array<Direction, Coordinates>{
@@ -50,6 +59,19 @@ namespace tetriz
             spawn(bag_.poll());
         }
 
+        constexpr void play(Move move)
+        {
+            switch (move)
+            {
+            case Move::Left: return this->move(Direction::Left);
+            case Move::Right:  return this->move(Direction::Right);
+            case Move::Down: return this->move(Direction::Down);
+            case Move::Drop: return this->drop();
+            case Move::Rotate: return this->rotate();
+            case Move::Swap: return this->swap();
+            }
+        }
+
         constexpr void move(Direction direction)
         {
             const auto move = tetriz::moves[direction];
@@ -71,26 +93,13 @@ namespace tetriz
 
         constexpr void drop()
         {
-            while (is_empty(offset_down))
-                current_.coordinates.y += 1;
-
+            current_ = ::tetriz::drop(board_, current_);
             lock();
         }
 
         constexpr void rotate()
         {
-            current_.rotation = next_left(current_.rotation);
-
-            for (const auto offset : kick_offsets(current_.shape, current_.rotation))
-            {
-                if (is_empty(offset))
-                {
-                    current_.coordinates += offset;
-                    return;
-                }
-            }
-
-            current_.rotation = next_right(current_.rotation);
+            current_ = ::tetriz::rotate(board_, current_).value_or(current_);
         }
 
         constexpr void swap()
@@ -162,7 +171,7 @@ namespace tetriz
                     board_.size() - row_begin);
 
             for (auto row : std::views::iota(row_begin) | std::views::take(row_count))
-                if (std::ranges::all_of(board_[row], std::bind_front(std::not_equal_to{}, Block::Void)))
+                if (!std::ranges::contains(board_[row], Block::Void))
                     clear_line(row);
         }
 
